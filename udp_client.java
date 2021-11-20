@@ -1,12 +1,33 @@
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.ServerSocket;
+import java.net.*;
 import java.util.Arrays;
+import java.util.Random;
 
 public class udp_client
 {
+    class Socket{
+        Socket(int port) throws IOException {
+            DatagramSocket socket = new DatagramSocket();
+            InetAddress address = InetAddress.getLocalHost();
+        }
+    }
+    class Cabecalho{
+        int length;
+        int seq;
+        byte key;
+        Cabecalho(int length, byte key){
+            this.key = key;
+            this.length = length;
+            this.seq=0;
+        }
+        Cabecalho(int length, byte key, int seq){
+            this.key = key;
+            this.length = length;
+            this.seq=seq;
+        }
+
+
+    }
     public static void main(String[] args) throws IOException
     {
         // Constructor to create a datagram socket
@@ -22,26 +43,6 @@ public class udp_client
         // connect() method
         socket.connect(address, port);
 
-        // isBound() method
-        System.out.println("IsBound : " + socket.isBound());
-
-        // isConnected() method
-        System.out.println("isConnected : " + socket.isConnected());
-
-        // getInetAddress() method
-        System.out.println("InetAddress : " + socket.getInetAddress());
-
-        // getPort() method
-        System.out.println("Port : " + socket.getPort());
-
-        // getRemoteSocketAddress() method
-        System.out.println("Remote socket address : " +
-                socket.getRemoteSocketAddress());
-
-        // getLocalSocketAddress() method
-        System.out.println("Local socket address : " +
-                socket.getLocalSocketAddress());
-
         // send() method
         socket.send(dp);
         System.out.println("...packet sent successfully....");
@@ -50,12 +51,6 @@ public class udp_client
         socket.receive(dptorec);
         System.out.println("Received packet data : " +
                 new String(dptorec.getData()));
-
-        // getLocalPort() method
-        System.out.println("Local Port : " + socket.getLocalPort());
-
-        // getLocalAddress() method
-        System.out.println("Local Address : " + socket.getLocalAddress());
 
         // setSOTimeout() method
         socket.setSoTimeout(50);
