@@ -1,0 +1,22 @@
+Cabeçalho:
+	Tem 15 Bytes
+	1 byte para indicar o tipo (mensagem protocolar ou pacote de ficheiros)
+	4 bytes para indicar o tamanho do pacote
+	4 bytes para indicar o número de sequência
+	6 bytes para uma chave que identifica o ficheiro ao que o pacote refere
+
+Listar ficheiros:
+	-Tipo 0
+	-Divisor é o #
+	-Ao listar o ficheiro é passado o nome do ficheiro 
+	 e o tamanho do ficheiro
+
+Pacotes de dados:
+	-Tipo 1
+	-800 bytes de tamanho máximo
+
+Pedido de ficheiro:
+	-Tipo 2
+
+Ao iniciar a sincronização o "servidor" envia a lista de ficheiros na pasta
+pedida ao "cliente"
