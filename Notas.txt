@@ -18,5 +18,21 @@ Pacotes de dados:
 Pedido de ficheiro:
 	-Tipo 2
 
+Pacotes em falta(NOACK)
+	-Tipo 3
+	-Numero de seq : pacote em falta
+
+Pacote de dados final
+	-Tipo 4
+
 Ao iniciar a sincronização o "servidor" envia a lista de ficheiros na pasta
 pedida ao "cliente"
+
+
+Passos:
+	-Dividir um ficheiro em pacotes
+	-Contruir o listFiles
+	-Tornar a informacao serializable
+	-Serialize e deserialize
+	-Conexão por UDP (Sockets)
+

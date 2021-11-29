@@ -1,12 +1,9 @@
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.net.*;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class udp_client
 {
@@ -72,11 +69,10 @@ class Socket{
     Socket(int port) throws IOException{
         DatagramSocket socket = new DatagramSocket();
         InetAddress address = InetAddress.getLocalHost();
-
     }
 }
 
-class Cabecalho{
+class Cabecalho implements Serializable {
     byte tipo;
     int length;
     int seq;
@@ -92,10 +88,18 @@ class Cabecalho{
         this.tipo = tipo;
     }
 
+    Cabecalho(byte tipo, int length, int seq, byte[] key){
+        this.key = key;
+        this.length = length;
+        this.seq=seq;
+        this.tipo = tipo;
+    }
+
     Cabecalho(Cabecalho cb){
         this.key = cb.getKey();
         this.length = cb.getLength();
         this.seq = cb.getSeq();
+        this.tipo = cb.getTipo();
     }
 
     int getLength(){
@@ -111,4 +115,51 @@ class Cabecalho{
     }
 
     byte getTipo() { return this.tipo; }
+
+    void serialize(DataOutputStream out) throws IOException {
+        out.write(tipo);
+        out.writeInt(length);
+        out.writeInt(seq);
+        out.write(key);
+    }
+
+    Cabecalho deserialize(DataInputStream in) throws IOException {
+        byte b = in.readByte();
+        int comp = in.readInt();
+        int sq = in.readInt();
+        byte[] k = in.readNBytes(6);
+        return new Cabecalho(b,comp,sq,k);
+    }
 }
+
+class ListarFicheiro {
+    HashMap<String,Double> list;
+
+    void getListaFicheiro(String dir){
+        File[] listaF = new File(dir).listFiles();
+
+        for(File l : listaF){
+            if(!l.isDirectory()){
+                String nome = l.getName();
+                Double size = (double)l.length();
+                list.put(nome,size);
+            }
+        }
+    }
+
+    void serialize(DataOutputStream out) throws IOException {
+        for(Map.Entry<String,Double> file : list.entrySet()){
+            out.writeUTF(file.getKey());
+            out.writeUTF("#");
+            out.writeDouble(file.getValue());
+            out.writeUTF("#");
+        }
+    }
+
+    Map<String,Double> deserialize(DataInputStream in) {
+        return  null;
+    }
+
+
+}
+
