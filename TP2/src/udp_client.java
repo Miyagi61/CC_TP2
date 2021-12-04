@@ -35,7 +35,8 @@ public class udp_client
         // getSOTimeout() method
         System.out.println("SO Timeout : " + socket.getSoTimeout());
     */
-    Cabecalho c = new Cabecalho(800, (byte) 0);
+    ListarFicheiro lf = new ListarFicheiro(".");
+    lf.atualizaListaFicheiro();
     }
 
 }
@@ -80,22 +81,18 @@ class Cabecalho implements Serializable {
 
     Cabecalho(int length, byte tipo){
         Random rn = new Random();
-        this.key = new byte[6];
-        rn.nextBytes(this.key);
         this.length = length;
         this.seq=0;
         this.tipo = tipo;
     }
 
     Cabecalho(byte tipo, int length, int seq, byte[] key){
-        this.key = key;
         this.length = length;
         this.seq=seq;
         this.tipo = tipo;
     }
 
     Cabecalho(Cabecalho cb){
-        this.key = cb.getKey();
         this.length = cb.getLength();
         this.seq = cb.getSeq();
         this.tipo = cb.getTipo();
@@ -109,17 +106,12 @@ class Cabecalho implements Serializable {
         return this.seq;
     }
 
-    byte[] getKey(){
-        return this.key;
-    }
-
     byte getTipo() { return this.tipo; }
 
     void serialize(DataOutputStream out) throws IOException {
         out.write(tipo);
         out.writeInt(length);
         out.writeInt(seq);
-        out.write(key);
     }
 
     Cabecalho deserialize(DataInputStream in) throws IOException {
@@ -132,10 +124,16 @@ class Cabecalho implements Serializable {
 }
 
 class ListarFicheiro {
-    HashMap<String,Double> list;
+    Map<String,Double> list;
+    String nome_pasta;
 
-    void getListaFicheiro(String dir){
-        File[] listaF = new File(dir).listFiles();
+    ListarFicheiro(String pasta){
+        this.nome_pasta = pasta;
+        this.list = new HashMap<>();
+    }
+
+    void atualizaListaFicheiro(){
+        File[] listaF = new File(nome_pasta).listFiles();
 
         for(File l : listaF){
             if(!l.isDirectory()){
@@ -158,7 +156,5 @@ class ListarFicheiro {
     Map<String,Double> deserialize(DataInputStream in) {
         return  null;
     }
-
-
 }
 
