@@ -76,7 +76,6 @@ class Cabecalho implements Serializable {
     byte tipo;
     int length;
     int seq;
-    byte[] key;
 
 
     Cabecalho(int length, byte tipo){

@@ -1,38 +1,52 @@
 Cabeçalho:
-	Tem 15 Bytes
+	Tem 9 Bytes
 	1 byte para indicar o tipo (mensagem protocolar ou pacote de ficheiros)
-	4 bytes para indicar o tamanho do pacote
 	4 bytes para indicar o número de sequência
-	6 bytes para uma chave que identifica o ficheiro ao que o pacote refere
+	4 bytes inteiro que identifica o ficheiro ao que o pacote se refere
+	atraves de uma funcao de hash a partir do seu nome
 
 Listar ficheiros:
 	-Tipo 0
 	-Divisor é o #
 	-Ao listar o ficheiro é passado o nome do ficheiro 
 	 e o tamanho do ficheiro
+	-Tem de existir um contador do tamanho do pacote, se inserir o 
+	proximo nome fizer ultrapassar o tamanho limite, criar um novo pacote
+	-No ultimo campo um inteiro sem significado
+
+Pacote final da lista de ficheiros:
+	-Tipo 5
 
 Pacotes de dados:
 	-Tipo 1
-	-800 bytes de tamanho máximo
+	-800 bytes de tamanho máximo (a contar com o cabeçalho)
+	-Numero de sequencia começa em 1 e indica a ordem dos pacotes
 
 Pedido de ficheiro:
 	-Tipo 2
+	-Numero de sequencia sem significado
+	-Chave a partir da string da lista de nomes
 
 Pacotes em falta(NOACK)
 	-Tipo 3
-	-Numero de seq : pacote em falta
+	-Numero de seq (1..N) : pacote em falta
 
-Pacote de dados final
+Pacotes em falta da Lista de ficheiros(NOACKL)
 	-Tipo 4
+	-Numero de seq (1..N) : pacote em falta
 
 Ao iniciar a sincronização o "servidor" envia a lista de ficheiros na pasta
 pedida ao "cliente"
 
+Uma thread a espera de conexão, 
 
 Passos:
 	-Dividir um ficheiro em pacotes
 	-Contruir o listFiles
 	-Tornar a informacao serializable
 	-Serialize e deserialize
+	-Threads
 	-Conexão por UDP (Sockets)
-
+	-Registo de logs
+	-pedidos HTTP GET com estado de funcionamento
+	-
