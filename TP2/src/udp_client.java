@@ -35,9 +35,18 @@ public class udp_client
         // getSOTimeout() method
         System.out.println("SO Timeout : " + socket.getSoTimeout());
     */
-    ListarFicheiro lf = new ListarFicheiro(".");
-    lf.atualizaListaFicheiro();
-    }
+
+        DatagramSocket cs = new DatagramSocket(12321);
+
+        ListarFicheiro lf = new ListarFicheiro("../");
+        lf.atualizaListaFicheiro();
+
+        byte[] dp = lf.outputToByte();
+        InetAddress ip = InetAddress.getLocalHost();
+        DatagramPacket ps = new DatagramPacket(dp,dp.length,ip,5252);
+        cs.send(ps);
+
+   }
 
 }
 
@@ -63,13 +72,6 @@ class DynamicByteArray
         rs.nextBytes(array);
         L_array.add(array);
         count++;
-    }
-}
-
-class Socket{
-    Socket(int port) throws IOException{
-        DatagramSocket socket = new DatagramSocket();
-        InetAddress address = InetAddress.getLocalHost();
     }
 }
 
@@ -120,41 +122,6 @@ class Cabecalho implements Serializable {
         int sq = in.readInt();
         byte[] k = in.readNBytes(6);
         return new Cabecalho(b,comp,sq,k);
-    }
-}
-
-class ListarFicheiro {
-    Map<String,Double> list;
-    String nome_pasta;
-
-    ListarFicheiro(String pasta){
-        this.nome_pasta = pasta;
-        this.list = new HashMap<>();
-    }
-
-    void atualizaListaFicheiro(){
-        File[] listaF = new File(nome_pasta).listFiles();
-
-        for(File l : listaF){
-            if(!l.isDirectory()){
-                String nome = l.getName();
-                Double size = (double)l.length();
-                list.put(nome,size);
-            }
-        }
-    }
-
-    void serialize(DataOutputStream out) throws IOException {
-        for(Map.Entry<String,Double> file : list.entrySet()){
-            out.writeUTF(file.getKey());
-            out.writeUTF("#");
-            out.writeDouble(file.getValue());
-            out.writeUTF("#");
-        }
-    }
-
-    Map<String,Double> deserialize(DataInputStream in) {
-        return  null;
     }
 }
 
