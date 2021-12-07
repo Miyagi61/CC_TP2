@@ -12,15 +12,14 @@ Listar ficheiros:
 	 e o tamanho do ficheiro
 	-Tem de existir um contador do tamanho do pacote, se inserir o 
 	proximo nome fizer ultrapassar o tamanho limite, criar um novo pacote
-	-No ultimo campo um inteiro sem significado
-
-Pacote final da lista de ficheiros:
-	-Tipo 5
+	-No ultimo campo um inteiro com o # de ficheiros da lista total
 
 Pacotes de dados:
 	-Tipo 1
 	-800 bytes de tamanho máximo (a contar com o cabeçalho)
 	-Numero de sequencia começa em 1 e indica a ordem dos pacotes
+	-Na primeira comunicacao o "cliente" envia no corpo o nome da pasta
+	a sincronizar com nr de seq = -1 e hash sem signifiacdo
 
 Pedido de ficheiro:
 	-Tipo 2
@@ -37,6 +36,11 @@ Pacotes em falta da Lista de ficheiros(NOACKL)
 
 Ao iniciar a sincronização o "servidor" envia a lista de ficheiros na pasta
 pedida ao "cliente"
+
+"A" envia uma pasta onde B tem de enviar a sua lista de ficheiros,
+se em "B" não existir tem de criar e mandar vazio, no caso de existir tem
+de mandar a sua lista de ficheiros e o "A" trata de encontrar as diferenças
+e enviar/pedir os ficheiros que faltam.
 
 Uma thread a espera de conexão, 
 

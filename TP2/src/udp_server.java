@@ -1,10 +1,9 @@
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
+import java.nio.ByteBuffer;
 
 public class udp_server {
     public static void main (String[] args) throws IOException {
@@ -13,17 +12,16 @@ public class udp_server {
         DatagramPacket dp = new DatagramPacket(buf, 800);
 
         ds.receive(dp);
+        DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
+        Cabecalho c = new Cabecalho(din);
+        ListarFicheiro lf = new ListarFicheiro(din);
+        din.close();
+        lf.atualizaListaFicheiro();
 
-        ListarFicheiro lf = new ListarFicheiro(dp);
+        byte[] list_files = lf.upSerialize();
+        DatagramPacket newP = new DatagramPacket(list_files, list_files.length,dp.getSocketAddress());
+        ds.send(newP);
 
-
-
-       /* DatagramPacket senddp = new DatagramPacket(send, 5,
-                dp.getAddress(), dp.getPort());
-
-        DatagramSocket socket = new DatagramSocket();
-
-        socket.connect(dp.getAddress(), dp.getPort());
-        socket.send(senddp);*/
     }
 }
+

@@ -1,9 +1,9 @@
+import org.codehaus.groovy.util.ByteArrayIterator;
+
 import java.io.*;
 import java.net.*;
-import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class udp_client
 {
@@ -31,97 +31,34 @@ public class udp_client
 
         // setSOTimeout() method
         socket.setSoTimeout(50);
-
+/home/miyagi/Desktop
         // getSOTimeout() method
         System.out.println("SO Timeout : " + socket.getSoTimeout());
     */
-
-        DatagramSocket cs = new DatagramSocket(12321);
-
-        ListarFicheiro lf = new ListarFicheiro("../");
-        lf.atualizaListaFicheiro();
-
-        byte[] dp = lf.outputToByte();
+        String pasta = "/home/miyagi/Desktop";
         InetAddress ip = InetAddress.getLocalHost();
-        DatagramPacket ps = new DatagramPacket(dp,dp.length,ip,5252);
-        cs.send(ps);
+        DatagramSocket cs = new DatagramSocket();
+        Cabecalho c =  new Cabecalho((byte) 1,-1,123);
+        ByteArrayOutputStream bao = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bao);
+        c.serialize(out);
+        out.writeUTF(pasta);
+        DatagramPacket pastaP = new DatagramPacket(bao.toByteArray(), bao.size(),ip,5252);
+        cs.send(pastaP);
+
+        byte[] buf = new byte[800];
+        DatagramPacket dp = new DatagramPacket(buf, 800);
+        cs.receive(dp);
+
+        DataInputStream in = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
+        ListarFicheiro lf = new ListarFicheiro(pasta);
+        lf.carregarDP(in,0);
 
    }
 
 }
 
-class DynamicByteArray
-{
-    private List<byte[]> L_array;
-    private int count;
-    private int sizeofarray;
-    private int byteSize;
-    //creating a constructor of the class that initializes the values
-    public DynamicByteArray(int byteSize)
-    {
-        L_array = new ArrayList<>();
-        count = 0;
-        sizeofarray = 1;
-        this.byteSize = byteSize;
-    }
-    //creating a function that appends an element at the end of the array
-    public void addElement()
-    {
-        Random rs = new Random();
-        byte[] array = new byte[this.byteSize];
-        rs.nextBytes(array);
-        L_array.add(array);
-        count++;
-    }
-}
-
-class Cabecalho implements Serializable {
-    byte tipo;
-    int length;
-    int seq;
 
 
-    Cabecalho(int length, byte tipo){
-        Random rn = new Random();
-        this.length = length;
-        this.seq=0;
-        this.tipo = tipo;
-    }
 
-    Cabecalho(byte tipo, int length, int seq, byte[] key){
-        this.length = length;
-        this.seq=seq;
-        this.tipo = tipo;
-    }
-
-    Cabecalho(Cabecalho cb){
-        this.length = cb.getLength();
-        this.seq = cb.getSeq();
-        this.tipo = cb.getTipo();
-    }
-
-    int getLength(){
-        return this.length;
-    }
-
-    int getSeq(){
-        return this.seq;
-    }
-
-    byte getTipo() { return this.tipo; }
-
-    void serialize(DataOutputStream out) throws IOException {
-        out.write(tipo);
-        out.writeInt(length);
-        out.writeInt(seq);
-    }
-
-    Cabecalho deserialize(DataInputStream in) throws IOException {
-        byte b = in.readByte();
-        int comp = in.readInt();
-        int sq = in.readInt();
-        byte[] k = in.readNBytes(6);
-        return new Cabecalho(b,comp,sq,k);
-    }
-}
 

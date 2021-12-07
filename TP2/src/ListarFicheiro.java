@@ -1,5 +1,9 @@
+import org.apache.groovy.parser.antlr4.util.StringUtils;
+
 import java.io.*;
 import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,8 +16,10 @@ public class ListarFicheiro {
         this.list = new HashMap<>();
     }
 
-    ListarFicheiro(DatagramPacket dp){
-        this.carregarDP(dp);
+    ListarFicheiro(DataInputStream din) throws IOException{
+        //DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(), dp.getOffset(), dp.getLength()));
+        this.list = new HashMap<>();
+        this.carregarDP(din,-1);
     }
 
     void atualizaListaFicheiro(){
@@ -22,19 +28,34 @@ public class ListarFicheiro {
         for(File l : listaF){
             if(!l.isDirectory()){
                 String nome = l.getName();
+                ByteBuffer buffer = StandardCharsets.UTF_8.encode(nome);
+                nome = StandardCharsets.UTF_8.decode(buffer).toString();
+
                 Double size = (double)l.length();
                 list.put(nome,size);
             }
         }
     }
 
-    void serialize(DataOutputStream out) throws IOException {
+    byte[] upSerialize() throws IOException {
+        ByteArrayOutputStream bao = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bao);
+
         for(Map.Entry<String,Double> file : list.entrySet()){
-            out.writeUTF(file.getKey());
-            out.writeUTF("#");
-            out.writeDouble(file.getValue());
-            out.writeUTF("#");
+            serialize(out,file.getKey(),file.getValue());
         }
+
+        out.flush();
+        out.close();
+
+        return bao.toByteArray();
+    }
+
+    void serialize(DataOutputStream out, String file, Double value) throws IOException{
+        out.writeUTF(file);
+        out.writeUTF("#");
+        out.writeDouble(value);
+        out.writeUTF("#");
     }
 
     static Map<String,Double> deserialize(DataInputStream in) throws IOException{
@@ -53,19 +74,13 @@ public class ListarFicheiro {
         return res;
     }
 
-    public byte[] outputToByte() throws IOException {
-        ByteArrayOutputStream bao = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(bao);
-        serialize(dos);
-        dos.flush();
-        dos.close();
-        return bao.toByteArray();
-    }
-
-    public void carregarDP(DatagramPacket dp){
-        DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(), dp.getOffset(), dp.getLength()));
+    public void carregarDP(DataInputStream din,int tipo){
         try{
-            this.list = ListarFicheiro.deserialize(din);
+            if(tipo == -1)
+                this.nome_pasta = din.readUTF();
+            else{
+                this.list.putAll(ListarFicheiro.deserialize(din));
+            }
             din.close();
         }catch (IOException e) {
             System.out.println(e.getMessage());
