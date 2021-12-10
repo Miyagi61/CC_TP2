@@ -1,13 +1,11 @@
-import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.*;
-import java.nio.ByteBuffer;
 
 public class udp_server {
     public static void main (String[] args) throws IOException {
-        DatagramSocket ds = new DatagramSocket(5252);
+        DatagramSocket ds = new DatagramSocket(6000);
         byte[] buf = new byte[800];
         DatagramPacket dp = new DatagramPacket(buf, 800);
 
@@ -18,9 +16,13 @@ public class udp_server {
         din.close();
         lf.atualizaListaFicheiro();
 
-        byte[] list_files = lf.upSerialize();
-        DatagramPacket newP = new DatagramPacket(list_files, list_files.length,dp.getSocketAddress());
-        ds.send(newP);
+        ByteManager list_files = lf.upSerialize();
+
+        for(int i = 1; i <= list_files.getCount() ; i++)
+            Pacote.enviaPacoteListaFicheiros(ds,list_files,i,dp.getSocketAddress());
+
+
+        ds.close();
 
     }
 }

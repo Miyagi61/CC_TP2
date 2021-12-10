@@ -1,5 +1,3 @@
-package TP2.src;
-
 import java.io.*;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -138,7 +136,7 @@ public class BodyHandler implements Serializable {
         bh.recebePacote(s.getBytes());
         os.write(buffer,0,s.length()+1);
         for(byte[] arr: bh.pacotes)
-            System.out.writeBytes(arr);
+            System.out.write(arr,0,arr.length);
     }
 
 }

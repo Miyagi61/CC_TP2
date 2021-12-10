@@ -1,58 +1,51 @@
-import org.codehaus.groovy.util.ByteArrayIterator;
-
 import java.io.*;
 import java.net.*;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class udp_client
 {
     public static void main(String[] args) throws IOException
     {
-        /*   // Constructor to create a datagram socket
-        int port = 5252;
-        String inputString = "HELLO";
-        byte[] buf = inputString.getBytes();
-        byte[] buf1 = new byte[5];
-        DatagramPacket dp = new DatagramPacket(buf, 5, address, port);
-        DatagramPacket dptorec = new DatagramPacket(buf1, 5);
+        if(args.length == 1 && args[0].equals("start")){
+            DatagramSocket ds = new DatagramSocket(5252);
+            byte[] buf = new byte[800];
+            DatagramPacket dp = new DatagramPacket(buf, 800);
 
-        // connect() method
-        socket.connect(address, port);
+            ds.receive(dp);
+            DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
+            Cabecalho c = new Cabecalho(din);
+            ListarFicheiro lf = new ListarFicheiro(din);
+            din.close();
+            lf.atualizaListaFicheiro();
 
-        // send() method
-        socket.send(dp);
-        System.out.println("...packet sent successfully....");
+            ByteManager list_files = lf.upSerialize();
 
-        // receive() method
-        socket.receive(dptorec);
-        System.out.println("Received packet data : " +
-                new String(dptorec.getData()));
+            for(int i = 0; i < list_files.getCount() ; i++)
+                Pacote.enviaPacoteListaFicheiros(ds,list_files,i,dp.getSocketAddress());
 
-        // setSOTimeout() method
-        socket.setSoTimeout(50);
-/home/miyagi/Desktop
-        // getSOTimeout() method
-        System.out.println("SO Timeout : " + socket.getSoTimeout());
-    */
-        String pasta = "/home/miyagi/Desktop";
-        InetAddress ip = InetAddress.getLocalHost();
-        DatagramSocket cs = new DatagramSocket();
-        Cabecalho c =  new Cabecalho((byte) 1,-1,123);
-        ByteArrayOutputStream bao = new ByteArrayOutputStream();
-        DataOutputStream out = new DataOutputStream(bao);
-        c.serialize(out);
-        out.writeUTF(pasta);
-        DatagramPacket pastaP = new DatagramPacket(bao.toByteArray(), bao.size(),ip,5252);
-        cs.send(pastaP);
+        }else {
+            String pasta = "/home/miyagi/Desktop";
+            InetAddress ip = InetAddress.getLocalHost();
+            //InetAddress ip = InetAddress.getByName(args[1]);
+            //String pasta = args[0];
+            DatagramSocket cs = new DatagramSocket();
+            Cabecalho c = new Cabecalho((byte) 1, -1, 123);
 
-        byte[] buf = new byte[800];
-        DatagramPacket dp = new DatagramPacket(buf, 800);
-        cs.receive(dp);
+            Pacote.pedeListaFicheiros(cs, c, pasta, ip);
 
-        DataInputStream in = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
-        ListarFicheiro lf = new ListarFicheiro(pasta);
-        lf.carregarDP(in,0);
+            ListarFicheiro lf = new ListarFicheiro(pasta);
+            int aux = 1;
+            List<Integer> seqs = new ArrayList<>();
+            for(int i = 0; i < aux ; i++){
+                c = Pacote.recebePacoteListaFicheiros(cs,lf);
+                aux = c.getHash(); // get numero de pacotes
+                seqs.add(c.getSeq());
+            }
+
+            System.out.println(lf.list.toString());
+            cs.close();
+        }
 
    }
 

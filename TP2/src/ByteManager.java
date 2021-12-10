@@ -2,29 +2,39 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class ByteManager {
         private List<byte[]> L_array;
         private int count;
-        private int sizeofarray;
-        private int byteSize;
+        private int items;
         //creating a constructor of the class that initializes the values
-        public ByteManager(int byteSize)
+        public ByteManager()
         {
             L_array = new ArrayList<>();
             count = 0;
-            sizeofarray = 1;
-            this.byteSize = byteSize;
+            items = 0;
         }
         //creating a function that appends an element at the end of the array
-        public void addElement()
+        public void addElement(byte[] array)
         {
-            Random rs = new Random();
-            byte[] array = new byte[this.byteSize];
-            rs.nextBytes(array);
             L_array.add(array);
             count++;
+        }
+
+        public void addItem(){
+            items++;
+        }
+
+        public int getCount(){
+            return count;
+        }
+
+        public int getItems(){
+            return items;
+        }
+
+        public byte[] getL_array(int idx){
+            return L_array.get(idx);
         }
         static byte[] concatByteArray(byte[] cab, byte[] corpo){
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );

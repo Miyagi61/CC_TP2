@@ -1,6 +1,4 @@
-import javax.xml.crypto.Data;
 import java.io.*;
-import java.net.DatagramPacket;
 import java.util.Random;
 
 public class Cabecalho implements Serializable {
