@@ -3,12 +3,13 @@ import java.util.*;
 
 
 public class FileHandler implements Serializable {
-    private Set<Map.Entry<Cabecalho,byte[]>> pacotes;  //como sabemos a ordem dos pacotes que chegam ?
-    private boolean syncronized;
+    private boolean syncronized; //saber se já chegaram os pacotes todos
+    private Set<Map.Entry<Cabecalho,byte[]>> pacotes;   //cada pacote tem o seu cabeçalho e os bytes do corpo
+                                                        //e o set está ordenado pelos números de sequência do cabeçalho
 
 
     public FileHandler(){
-        Comparator<Map.Entry<Cabecalho,byte[]>> comparador = new ComparaPacotes();
+        Comparator<Map.Entry<Cabecalho,byte[]>> comparador = new ComparaPacotes(); //comprador segundo seq do cabeçalho
         this.pacotes = new TreeSet<>(comparador);
         this.syncronized=true;
     }
@@ -38,7 +39,7 @@ public class FileHandler implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         FileHandler that = (FileHandler) o;
-        return syncronized == that.syncronized && pacotes.equals(that.pacotes);
+        return syncronized == that.syncronized && pacotes.containsAll(that.pacotes);
     }
 
     boolean checkIfPacotesIguais(List<byte[]> a, List<byte[]> b){
@@ -51,27 +52,19 @@ public class FileHandler implements Serializable {
         return false;
     }
 
-    /*public int hashCode(String s) {
-        int hash = 7;
-        for (int i = 0; i < s.length(); i++) {
-            hash = hash*31 + s.charAt(i);}
-        return Objects.hash(cabecalho.hash);
-    }*///hashcode
-    
-    public FileHandler(DataInputStream din) throws IOException {
-        Comparator<Map.Entry<Cabecalho,byte[]>> comparador = new ComparaPacotes();
-        this.pacotes = new TreeSet<>(comparador);
+    public FileHandler(DataInputStream din) throws IOException {                    //lê uma input stream
+        Comparator<Map.Entry<Cabecalho,byte[]>> comparador = new ComparaPacotes();  //inicia o comparador
+        this.pacotes = new TreeSet<>(comparador);                                   //inicia o set
         syncronized=true;
-        while(din.available()>0) {
-            Cabecalho cb = new Cabecalho(din);
+        while(din.available()>0) {          // enquanto houver data
+            Cabecalho cb = new Cabecalho(din);   //cria um cabeçalho e atua conforme o seu tipo
             switch (cb.tipo) {
                 case 0:
                     break;
                 case 1:
-                    byte[] pacote = new byte[791];
-                    pacote = din.readNBytes(791);
-                    Map.Entry<Cabecalho,byte[]> me = new AbstractMap.SimpleEntry<Cabecalho,byte[]>(cb,pacote);
-                    pacotes.add(me);
+                    byte[] pacote = din.readNBytes(791);  //lê os bytes restantes para um pacote
+                    Map.Entry<Cabecalho,byte[]> me = new AbstractMap.SimpleEntry<>(cb, pacote); //cria um mapEntry
+                    pacotes.add(me);  //adiciona-o ao set dos pacotes
                     break;
                 case 2:
                     break;
@@ -84,21 +77,6 @@ public class FileHandler implements Serializable {
         din.close();
     }
 
-/*
-    void readFileBytes() throws FileNotFoundException, IOException {
-        FileInputStream fis = new FileInputStream(file);
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        int read;
-        byte[] buffer = new byte[791];
-        while((read=fis.read(buffer))!=-1){
-            os.write(buffer, 0, 791);
-            pacotes.add(buffer.clone());
-            nr_pacotes++;
-            buffer = new byte[791];
-        }
-        fis.close();
-    }*/
-
     File juntaPacotes() throws FileNotFoundException,IOException{ //Pacotes já estão ordenados por ser treeset
         File file = new File("xpto");
         FileOutputStream fos = new FileOutputStream(file);
@@ -110,38 +88,8 @@ public class FileHandler implements Serializable {
         return file;
     }
 
-    /*File juntaPacotes() throws FileNotFoundException , IOException{
-        Path path = file.toPath();
-        File f = new File(2+file.getName());
-        FileOutputStream fos = new FileOutputStream(f);
-
-        if(syncronized){
-            for(byte[] pacote: pacotes){
-                for(byte b: pacote){
-                    if(b!=0)
-                        fos.write(b);
-                }
-            }
-            fos.flush();
-            fos.close();
-        }
-        return f;
-    }
-*/
 
     public static void main(String[] args) throws IOException {
-
-/*
-        FileHandler bh = new FileHandler();
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        byte[] buffer = new byte[791];
-        String s = "Hello Wolrd!!";
-
-        bh.recebePacote(s.getBytes());
-        os.write(buffer,0,s.length()+1);
-        for(byte[] arr: bh.pacotes)
-            System.out.write(arr,0,arr.length);
-    }*/
     }
 }
 
