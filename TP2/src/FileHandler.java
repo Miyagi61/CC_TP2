@@ -1,45 +1,27 @@
 import java.io.*;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 
-public class BodyHandler implements Serializable {
-    private Cabecalho cabecalho;
-    private int nr_pacotes;
-    private List<byte[]> pacotes;
+public class FileHandler implements Serializable {
+    private Map<Cabecalho , byte[] > pacotes;  //como sabemos a ordem dos pacotes que chegam ?
     private boolean syncronized;
 
 
-    public BodyHandler(){
-        this.cabecalho = new Cabecalho((byte)1, -1 , 123);
-        this.pacotes = new ArrayList<byte[]>();
-        this.nr_pacotes=0;
+    public FileHandler(){
+        this.pacotes = new HashMap<>();
         this.syncronized=true;
     }
 
-    public int getNr_pacotes() {
-        return nr_pacotes;
-    }
 
-    public void setNr_pacotes(int nr_pacotes) {
-        this.nr_pacotes = nr_pacotes;
+    public int getNr_pacotes() {
+        return pacotes.size();
     }
 
     public List<byte[]> getPacotes() {
         List<byte[]> nova = new ArrayList<byte[]>();
-        for(byte[] pacote: pacotes)
+        for(byte[] pacote: pacotes.values())
             nova.add(pacote.clone());
         return nova;
-    }
-
-    public void setPacotes(List<byte[]> pacotes) {
-        List<byte[]> nova = new ArrayList<byte[]>();
-        for(byte[] pacote: pacotes)
-            nova.add(pacote.clone());
-        this.pacotes=nova;
     }
 
     public boolean isSyncronized() {
@@ -54,11 +36,8 @@ public class BodyHandler implements Serializable {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        BodyHandler that = (BodyHandler) o;
-        return  nr_pacotes == that.nr_pacotes &&
-                syncronized == that.syncronized &&
-                cabecalho.equals(that.cabecalho) &&
-                checkIfPacotesIguais(pacotes,that.pacotes);
+        FileHandler that = (FileHandler) o;
+        return syncronized == that.syncronized && pacotes.equals(that.pacotes);
     }
 
     boolean checkIfPacotesIguais(List<byte[]> a, List<byte[]> b){
@@ -71,11 +50,35 @@ public class BodyHandler implements Serializable {
         return false;
     }
 
-    public int hashCode(String s) {
+    /*public int hashCode(String s) {
         int hash = 7;
         for (int i = 0; i < s.length(); i++) {
             hash = hash*31 + s.charAt(i);}
         return Objects.hash(cabecalho.hash);
+    }*///hashcode
+    
+    public FileHandler(DataInputStream din) throws IOException {
+        pacotes = new HashMap<>();
+        syncronized=true;
+        while(din.available()>0) {
+            Cabecalho cb = new Cabecalho(din);
+            switch (cb.tipo) {
+                case 0:
+                    break;
+                case 1:
+                    byte[] pacote = new byte[791];
+                    pacote = din.readNBytes(791);
+                    pacotes.put(cb, pacote);
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    break;
+                case 4:
+                    break;
+            }
+        }
+        din.close();
     }
 
 /*
@@ -113,22 +116,10 @@ public class BodyHandler implements Serializable {
     }
 */
 
-    void recebePacote(byte[] pacote){
-            int len=pacote.length;
-            if(len<=791) {
-                byte[] novo = new byte[len];
-                for (int i = 0; i < len; i++) {
-                    novo[i] = pacote[i];
-                }
-                pacotes.add(novo);
-                nr_pacotes++;
-            }
-    }
-
     public static void main(String[] args) throws IOException {
 
-
-        BodyHandler bh = new BodyHandler();
+/*
+        FileHandler bh = new FileHandler();
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         byte[] buffer = new byte[791];
         String s = "Hello Wolrd!!";
@@ -137,6 +128,6 @@ public class BodyHandler implements Serializable {
         os.write(buffer,0,s.length()+1);
         for(byte[] arr: bh.pacotes)
             System.out.write(arr,0,arr.length);
+    }*/
     }
-
 }
