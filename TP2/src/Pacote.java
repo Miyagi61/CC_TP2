@@ -5,8 +5,11 @@ import java.util.List;
 
 public class Pacote {
 
-    void sendPacote(DatagramSocket ds){
-
+    static void enviaPacoteErro(DatagramSocket ds, int seq, SocketAddress sa) throws IOException {
+        Cabecalho c = new Cabecalho((byte)5,seq,0);
+        byte[] res = c.outputToByte();
+        DatagramPacket newP = new DatagramPacket(res, res.length,sa);
+        ds.send(newP);
     }
 
     static void pedeListaFicheiros(DatagramSocket ds, Cabecalho c, String pasta, InetAddress ip) throws IOException{
@@ -14,12 +17,12 @@ public class Pacote {
         DataOutputStream out = new DataOutputStream(bao);
         c.serialize(out);
         out.writeUTF(pasta);
-        DatagramPacket pastaP = new DatagramPacket(bao.toByteArray(), bao.size(),ip,6000);
+        DatagramPacket pastaP = new DatagramPacket(bao.toByteArray(), bao.size(),ip,5252);
         ds.send(pastaP);
     }
 
     static void enviaPacoteListaFicheiros(DatagramSocket ds, ByteManager list_files, int seq, SocketAddress sa) throws IOException {
-        byte[] aux = list_files.getL_array(seq);
+        byte[] aux = list_files.getL_array(seq-1);
         Cabecalho c = new Cabecalho((byte)0,seq, list_files.getCount());
         byte[] res = ByteManager.concatByteArray(c.outputToByte(),aux);
         DatagramPacket newP = new DatagramPacket(res, res.length,sa);
@@ -33,6 +36,9 @@ public class Pacote {
         lf.origem = dp.getSocketAddress();
         DataInputStream in = new DataInputStream(new ByteArrayInputStream(dp.getData(), dp.getOffset(), dp.getLength()));
         Cabecalho c = new Cabecalho(in);
+        if(checkErro(c)){
+            return null;
+        }
         lf.carregarDP(in, 0);
 
         return c; // get tamanho
@@ -59,5 +65,16 @@ public class Pacote {
         DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
         Cabecalho c = new Cabecalho(din);
         Pacote.enviaPacoteListaFicheiros(ds,bm,c.getSeq(),dp.getSocketAddress());
+    }
+
+    private static boolean checkErro(Cabecalho c){
+        if(c.getTipo() != 5){
+            return false;
+        }
+        else
+        switch (c.getSeq()){
+            case 0 : System.out.println("Passowrd errada"); break;
+        }
+        return true;
     }
 }

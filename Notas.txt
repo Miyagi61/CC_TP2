@@ -34,6 +34,12 @@ Pacotes em falta da Lista de ficheiros(NOACKL)
 	-Tipo 4
 	-Numero de seq (1..N) : pacote em falta
 
+Erros
+	-Tipo 5
+	-Seq = 0 -> Password errada
+	-Seq = 1 -> 
+
+
 Ao iniciar a sincronização o "servidor" envia a lista de ficheiros na pasta
 pedida ao "cliente"
 

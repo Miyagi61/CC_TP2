@@ -103,8 +103,8 @@ class SessionSocket implements Runnable {
             Set<String> req = lf_A.checkDiff(lf_B);
             Set<String> send = lf_B.checkDiff(lf_A);
 
-
-
+            System.out.println("Requested" + req.toString());
+            System.out.println("Sending" + send.toString());
 
             ds.close();
         }

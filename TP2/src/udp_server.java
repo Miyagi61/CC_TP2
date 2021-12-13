@@ -1,26 +1,74 @@
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+
 
 public class udp_server {
+
     public static void main (String[] args) throws IOException {
+        String TEST_DIR = "/home/miyagi/Desktop/ffsync";
         DatagramSocket ds = new DatagramSocket(6000);
-        byte[] buf = new byte[800];
-        DatagramPacket dp = new DatagramPacket(buf, 800);
+        String str_dir;
+        if(args[0].equals("."))
+            str_dir = TEST_DIR;
+        else
+            str_dir = TEST_DIR+"/"+args[0];
 
-        ds.receive(dp);
-        DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
-        Cabecalho c = new Cabecalho(din);
-        ListarFicheiro lf = new ListarFicheiro(din);
-        din.close();
-        lf.atualizaListaFicheiro();
+        File dir = new File(str_dir);
 
-        ByteManager list_files = lf.upSerialize();
+        if(!dir.exists()){ dir.mkdirs(); }
+        InetAddress ip = InetAddress.getLocalHost();
+        int password = Integer.parseInt(args[2]);
+        Cabecalho c = new Cabecalho((byte) 1, -1, password);
+        try {
+            Pacote.pedeListaFicheiros(ds, c, str_dir, ip);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-        for(int i = 1; i <= list_files.getCount() ; i++)
-            Pacote.enviaPacoteListaFicheiros(ds,list_files,i,dp.getSocketAddress());
+        ListarFicheiro lf_A = new ListarFicheiro(str_dir);
+        lf_A.atualizaListaFicheiro();
 
+        ListarFicheiro lf_B = new ListarFicheiro(str_dir);
+        int aux = 1;
+        List<Integer> seqs = new ArrayList<>();
+        int maxcount = 0;
+        for(int i = 0; i < aux ; i+=1){
+            try {
+                ds.setSoTimeout(10); // 10 milissegundos
+                c = Pacote.recebePacoteListaFicheiros(ds,lf_B);
+                if(c == null)
+                    return;
+                aux = c.getHash(); // get numero de pacotes
+                seqs.add(c.getSeq());
+            }catch (SocketTimeoutException ste){
+                try {
+                    maxcount +=1;
+                    i-=1;
+                    if(maxcount == 20)
+                            throw new IOException("Ligação Instável");
+                    InetSocketAddress isa = new InetSocketAddress(ip,5252);
+                    Pacote.pedePacotesEmFaltaLF(ds,seqs,isa,aux);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        Set<String> req = lf_A.checkDiff(lf_B);
+        Set<String> send = lf_B.checkDiff(lf_A);
+
+        System.out.println("Requested" + req.toString());
+        System.out.println("Sending" + send.toString());
 
         ds.close();
 
