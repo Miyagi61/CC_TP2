@@ -1,15 +1,29 @@
 import java.io.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.*;
 
 
-public class FileHandler implements Serializable {
+public class FileHandler implements Serializable,Runnable {
+    private SocketAddress destino;
+    private File file;
     private boolean syncronized; //saber se já chegaram os pacotes todos
-    private Set<Map.Entry<Cabecalho,byte[]>> pacotes;   //cada pacote tem o seu cabeçalho e os bytes do corpo
+    private Set<Par<Cabecalho,byte[]>> pacotes;   //cada pacote tem o seu cabeçalho e os bytes do corpo
                                                         //e o set está ordenado pelos números de sequência do cabeçalho
 
 
     public FileHandler(){
-        Comparator<Map.Entry<Cabecalho,byte[]>> comparador = new ComparaPacotes(); //comprador segundo seq do cabeçalho
+        Comparator<Par<Cabecalho,byte[]>> comparador = new ComparaPacotes(); //comprador segundo seq do cabeçalho
+        this.pacotes = new TreeSet<>(comparador);
+        this.syncronized=true;
+    }
+
+    public  FileHandler(File file, SocketAddress dest){
+        this.file=file;
+        this.destino=dest;
+        Comparator<Par<Cabecalho,byte[]>> comparador = new ComparaPacotes(); //comprador segundo seq do cabeçalho
         this.pacotes = new TreeSet<>(comparador);
         this.syncronized=true;
     }
@@ -21,8 +35,8 @@ public class FileHandler implements Serializable {
 
     public List<byte[]> getPacotes() {
         List<byte[]> nova = new ArrayList<byte[]>();
-        for(Map.Entry pacote: pacotes)
-            nova.add((byte[]) pacote.getValue());
+        for(Par pacote: pacotes)
+            nova.add((byte[]) pacote.getSnd());
         return nova;
     }
 
@@ -53,7 +67,7 @@ public class FileHandler implements Serializable {
     }
 
     public FileHandler(DataInputStream din) throws IOException {                    //lê uma input stream
-        Comparator<Map.Entry<Cabecalho,byte[]>> comparador = new ComparaPacotes();  //inicia o comparador
+        Comparator<Par<Cabecalho,byte[]>> comparador = new ComparaPacotes();  //inicia o comparador
         this.pacotes = new TreeSet<>(comparador);                                   //inicia o set
         syncronized=true;
         while(din.available()>0) {          // enquanto houver data
@@ -63,8 +77,8 @@ public class FileHandler implements Serializable {
                     break;
                 case 1:
                     byte[] pacote = din.readNBytes(791);  //lê os bytes restantes para um pacote
-                    Map.Entry<Cabecalho,byte[]> me = new AbstractMap.SimpleEntry<>(cb, pacote); //cria um mapEntry
-                    pacotes.add(me);  //adiciona-o ao set dos pacotes
+                    Par<Cabecalho,byte[]> par = new Par<>(cb,pacote); //cria um mapEntry
+                    pacotes.add(par);  //adiciona-o ao set dos pacotes
                     break;
                 case 2:
                     break;
@@ -81,8 +95,8 @@ public class FileHandler implements Serializable {
         File file = new File("xpto");
         FileOutputStream fos = new FileOutputStream(file);
         if(syncronized){
-            for(Map.Entry<Cabecalho,byte[]> me: pacotes){
-                fos.write(me.getValue());
+            for(Par<Cabecalho,byte[]> me: pacotes){
+                fos.write(me.getSnd());
             }
         }
         return file;
@@ -90,13 +104,48 @@ public class FileHandler implements Serializable {
 
 
     public static void main(String[] args) throws IOException {
+        File f = new File("test.txt");
+        DatagramSocket ds = new DatagramSocket();
+        Thread t = new Thread(new FileHandler(f,ds.getLocalSocketAddress()));
+        t.start();
+
+    }
+
+    @Override
+    public void run() {
+        try {
+
+            DatagramSocket ds = new DatagramSocket();  //De onde a nova thread envia o ficheiro
+
+            FileInputStream fis = new FileInputStream(file);
+            for (long i = 0, len = file.length() / 791; i < len; i++) {
+
+                byte[] pacote = new byte[791];
+                Cabecalho cb = new Cabecalho((byte)1,(int)i, 123);
+                int read_bytes = fis.read(pacote);
+
+                System.out.println(read_bytes);
+
+                pacotes.add(new Par<>(cb,pacote));
+
+                byte[] res = ByteManager.concatByteArray(cb.outputToByte(),pacote);
+                DatagramPacket newP = new DatagramPacket(res, res.length,destino);
+                ds.send(newP);
+                // do something with the 8 bytes
+            }
+        } catch (FileNotFoundException ex) {
+            ex.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 }
 
-class ComparaPacotes implements  Comparator<Map.Entry<Cabecalho,byte[]>>{
+class ComparaPacotes implements  Comparator<Par<Cabecalho,byte[]>>{
 
     @Override
-    public int compare(Map.Entry<Cabecalho, byte[]> o1, Map.Entry<Cabecalho, byte[]> o2) {
-        return Integer.compare(o1.getKey().seq,o2.getKey().seq);
+    public int compare(Par<Cabecalho, byte[]> o1, Par<Cabecalho, byte[]> o2) {
+        return Integer.compare(o1.getFst().getSeq(), o2.getFst().getSeq());
     }
 }
