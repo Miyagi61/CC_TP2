@@ -12,7 +12,7 @@ import java.util.Set;
 public class udp_server {
 
     public static void main (String[] args) throws IOException {
-        String TEST_DIR = "/home/miyagi/Desktop/ffsync";
+        String TEST_DIR = System.getProperty("user.dir");
         DatagramSocket ds = new DatagramSocket(6000);
         String str_dir;
         if(args[0].equals("."))
@@ -27,7 +27,7 @@ public class udp_server {
         int password = Integer.parseInt(args[2]);
         Cabecalho c = new Cabecalho((byte) 1, -1, password);
         try {
-            Pacote.pedeListaFicheiros(ds, c, str_dir, ip);
+            Pacote.pedeListaFicheiros(ds, c, ip);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -35,14 +35,15 @@ public class udp_server {
         ListarFicheiro lf_A = new ListarFicheiro(str_dir);
         lf_A.atualizaListaFicheiro();
 
-        ListarFicheiro lf_B = new ListarFicheiro(str_dir);
+        //ListarFicheiro lf_B = new ListarFicheiro(str_dir);
+        ListarFicheiro lf_B = new ListarFicheiro();
         int aux = 1;
         List<Integer> seqs = new ArrayList<>();
         int maxcount = 0;
         for(int i = 0; i < aux ; i+=1){
             try {
-                ds.setSoTimeout(10); // 10 milissegundos
-                c = Pacote.recebePacoteListaFicheiros(ds,lf_B);
+                ds.setSoTimeout(100); // 10 milissegundos
+                c = Pacote.recebePacoteListaFicheiros(ds,lf_B,i-1);
                 if(c == null)
                     return;
                 aux = c.getHash(); // get numero de pacotes
@@ -64,8 +65,8 @@ public class udp_server {
             }
         }
 
-        Set<String> req = lf_A.checkDiff(lf_B);
-        Set<String> send = lf_B.checkDiff(lf_A);
+        Set<String> send = lf_A.checkDiff(lf_B);
+        Set<String> req = lf_B.checkDiff(lf_A);
 
         System.out.println("Requested" + req.toString());
         System.out.println("Sending" + send.toString());

@@ -6,7 +6,6 @@ public class Cabecalho implements Serializable {
     int seq;
     int hash;
 
-
     Cabecalho(int hash, byte tipo){
         Random rn = new Random();
         this.hash = hash;

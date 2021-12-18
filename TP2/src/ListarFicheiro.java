@@ -13,6 +13,10 @@ public class ListarFicheiro {
         this.nome_pasta = pasta;
         this.list = new HashMap<>();
     }
+    ListarFicheiro(){
+        this.nome_pasta = null;
+        this.list = new HashMap<>();
+    }
 
     ListarFicheiro(DataInputStream din) throws IOException{
         //DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(), dp.getOffset(), dp.getLength()));
@@ -42,6 +46,11 @@ public class ListarFicheiro {
         ByteArrayOutputStream bao = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bao);
         ByteManager bm = new ByteManager();
+
+        out.writeUTF(nome_pasta);
+        out.writeUTF("#");
+        bm.addItem();
+
         for(Map.Entry<String,Double> file : list.entrySet()){
             if(bao.size() + file.getKey().length() + 16 >= 791 ){// 2 + x + 2 + 1 + 8 + 2 + 1
                 bm.addElement(bao.toByteArray());
@@ -82,11 +91,11 @@ public class ListarFicheiro {
 
     public void carregarDP(DataInputStream din,int tipo){
         try{
-            if(tipo == -1)
+            if(tipo == -1) {
                 this.nome_pasta = din.readUTF();
-            else{
-                this.list.putAll(ListarFicheiro.deserialize(din));
+                din.readUTF();
             }
+            this.list.putAll(ListarFicheiro.deserialize(din));
             din.close();
         }catch (IOException e) {
             System.out.println(e.getMessage());

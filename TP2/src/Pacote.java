@@ -1,4 +1,3 @@
-import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.*;
 import java.util.List;
@@ -12,11 +11,10 @@ public class Pacote {
         ds.send(newP);
     }
 
-    static void pedeListaFicheiros(DatagramSocket ds, Cabecalho c, String pasta, InetAddress ip) throws IOException{
+    static void pedeListaFicheiros(DatagramSocket ds, Cabecalho c, InetAddress ip) throws IOException{
         ByteArrayOutputStream bao = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bao);
         c.serialize(out);
-        out.writeUTF(pasta);
         DatagramPacket pastaP = new DatagramPacket(bao.toByteArray(), bao.size(),ip,5252);
         ds.send(pastaP);
     }
@@ -29,7 +27,7 @@ public class Pacote {
         ds.send(newP);
     }
 
-    static Cabecalho recebePacoteListaFicheiros(DatagramSocket cs,ListarFicheiro lf) throws IOException {
+    static Cabecalho recebePacoteListaFicheiros(DatagramSocket cs,ListarFicheiro lf, int tipo) throws IOException {
         byte[] buf = new byte[800];
         DatagramPacket dp = new DatagramPacket(buf, 800);
         cs.receive(dp);
@@ -39,7 +37,7 @@ public class Pacote {
         if(checkErro(c)){
             return null;
         }
-        lf.carregarDP(in, 0);
+        lf.carregarDP(in, tipo);
 
         return c; // get tamanho
     }
@@ -58,13 +56,25 @@ public class Pacote {
     }
 
     static void trataACKL(DatagramSocket ds, ByteManager bm ) throws IOException{
+        Par<Cabecalho,SocketAddress> info = receive(ds);
+        Pacote.enviaPacoteListaFicheiros(ds,bm,info.getFst().getSeq(),info.getSnd());
+    }
+
+    static Par<Cabecalho,SocketAddress> receive(DatagramSocket ds) throws IOException{
         byte[] buf = new byte[800];
         DatagramPacket dp = new DatagramPacket(buf, 800);
         ds.setSoTimeout(100); // timeout é importante
         ds.receive(dp);
         DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
-        Cabecalho c = new Cabecalho(din);
-        Pacote.enviaPacoteListaFicheiros(ds,bm,c.getSeq(),dp.getSocketAddress());
+        return new Par<>(new Cabecalho(din),dp.getSocketAddress());
+    }
+    static Triplo<Cabecalho,SocketAddress,DataInputStream> receiveDIN(DatagramSocket ds) throws IOException{
+        byte[] buf = new byte[800];
+        DatagramPacket dp = new DatagramPacket(buf, 800);
+        ds.setSoTimeout(100); // timeout é importante
+        ds.receive(dp);
+        DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
+        return new Triplo<>(new Cabecalho(din),dp.getSocketAddress(),din);
     }
 
     private static boolean checkErro(Cabecalho c){
