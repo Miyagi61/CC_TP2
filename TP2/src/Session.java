@@ -41,7 +41,8 @@ class SessionSocket implements Runnable {
             System.out.println("Something went wrong");
         }
     }
-
+    // FFsync pasta1 ip segredo
+    // FFsync pasta3 ip segredo
     private void runPassive() throws IOException {
         ListarFicheiro lf = new ListarFicheiro(str_dir);
         lf.atualizaListaFicheiro();
@@ -58,6 +59,7 @@ class SessionSocket implements Runnable {
                 e.printStackTrace();
             }
         }
+
     }
 
     private void runActive(){
@@ -108,6 +110,7 @@ class SessionSocket implements Runnable {
         System.out.println("Sending" + send.toString());
 
 
+
     }
     public void run() {
             if(dest != null){
@@ -120,7 +123,8 @@ class SessionSocket implements Runnable {
             else{
                 this.runActive();
             }
-            ds.close();
+
+            this.ds.close();
         }
 }
 

@@ -68,6 +68,7 @@ public class Pacote {
         DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
         return new Par<>(new Cabecalho(din),dp.getSocketAddress());
     }
+
     static Triplo<Cabecalho,SocketAddress,DataInputStream> receiveDIN(DatagramSocket ds) throws IOException{
         byte[] buf = new byte[800];
         DatagramPacket dp = new DatagramPacket(buf, 800);
