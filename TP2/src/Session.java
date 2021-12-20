@@ -29,7 +29,6 @@ class SessionSocket implements Runnable {
     }
 
     public void init(){
-        String str_dir;
         if(args[0].equals("."))
             str_dir = TEST_DIR;
         else
@@ -82,7 +81,7 @@ class SessionSocket implements Runnable {
         List<Integer> seqs = new ArrayList<>();
         for(int i = 0; i < aux ; i++){
             try {
-                ds.setSoTimeout(100); // 100 milissegundos
+               // ds.setSoTimeout(100); // 100 milissegundos
                 c = Pacote.recebePacoteListaFicheiros(ds,lf_B,i-1);
                 if(c == null)
                     return;
@@ -132,6 +131,7 @@ class Session{
     public static void main(String[] str) throws IOException {
         DatagramSocket ds = new DatagramSocket(5252); // sera porta 80
         DatagramSocket ds2 = new DatagramSocket();
+        
         if(str.length == 3) { // <pasta> <ip> <segredo>
             try {
                 Par<Cabecalho,SocketAddress> info = Pacote.receive(ds);
@@ -143,13 +143,15 @@ class Session{
                         Pacote.enviaPacoteErro(ds,0,info.getSnd());
                     }else{
                         System.out.println("Conexão Estabelecida");
-                        new Thread(new SessionSocket(ds2, str, info.getSnd())).start(); // runPassive
+                        SessionSocket ss1 = new SessionSocket(ds2, str, info.getSnd()); 
+                        new Thread(ss1).start(); // runPassive
                     }
                 }else{
                     System.out.println("Mensagem Perdida");
                 }
             }catch (SocketTimeoutException e){
-                new Thread(new SessionSocket(ds2,str,null)).start(); // runActive
+                SessionSocket ss2 = new SessionSocket(ds2,str,null);
+                new Thread(ss2).start(); // runActive
             }
         }
         else{
