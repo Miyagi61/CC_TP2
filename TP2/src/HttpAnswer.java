@@ -1,13 +1,14 @@
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.locks.Lock;
 
 public class HttpAnswer implements Runnable{
     public ServerSocket ss;
     public String feedback;
     public boolean running;
+    public Lock l;
 
     HttpAnswer(){
         try {
@@ -16,16 +17,31 @@ public class HttpAnswer implements Runnable{
             e.printStackTrace();
         }
         running = true;
-        feedback = "Running";
+        feedback = "Waiting conec";
     }
 
     public void changeMessage(String message){
-        this.feedback = message;
+        l.lock();
+        try {
+            this.feedback = "<b>"+message+"<b>";
+        }finally {
+            l.unlock();
+        }
     }
 
-    public void turnOFF(InetAddress ip) throws IOException {
+    public void addMessage(String message){
+        l.lock();
+        try {
+            String aux = this.feedback;
+            this.feedback = aux + "\r\n\r\n" + "<b>" + message + "<b>";
+        }finally {
+            l.unlock();
+        }
+    }
+
+    public void turnOFF() throws IOException {
         running = false;
-        Socket s = new Socket(ip,80);
+        Socket s = new Socket(ss.getInetAddress(),80);
         s.close();
     }
 
@@ -37,8 +53,7 @@ public class HttpAnswer implements Runnable{
                 OutputStream clientOutput = clientSocket.getOutputStream();
                 clientOutput.write("HTTP/1.1 200 OK\r\n".getBytes());
                 clientOutput.write("\r\n".getBytes());
-                String str = "<b>"+feedback+"<b>";
-                clientOutput.write(str.getBytes());
+                clientOutput.write(feedback.getBytes());
                 clientOutput.write("\r\n\r\n".getBytes());
                 clientOutput.flush();
                 clientOutput.close();
