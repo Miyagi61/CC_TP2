@@ -17,7 +17,7 @@ public class HttpAnswer implements Runnable{
             e.printStackTrace();
         }
         running = true;
-        feedback = "Waiting conec";
+        feedback = "Waiting conecttion";
     }
 
     public void changeMessage(String message){
@@ -33,7 +33,7 @@ public class HttpAnswer implements Runnable{
         l.lock();
         try {
             String aux = this.feedback;
-            this.feedback = aux + "\r\n\r\n" + "<b>" + message + "<b>";
+            this.feedback = aux + "<br>" + "<b>" + message + "<b>";
         }finally {
             l.unlock();
         }

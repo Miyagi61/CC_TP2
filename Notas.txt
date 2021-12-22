@@ -41,6 +41,20 @@ Erros
 	-Seq = 0 -> Password errada
 	-Seq = 1 -> 
 
+Pacote de ficheiros a enviar
+    -Tipo 6
+    -Separado por " "
+    -Numero de seq (0..N)
+    -Tamanho do pacote na hash
+
+Pacote de ficheiros a enviar(NOACK)
+    -Tipo 7
+    -Numero de seq (0..N)
+
+Pacote a indicar nova socket
+    -Tipo 8
+    -Numero de pacotes esperado
+    -Hash vazio
 
 Ao iniciar a sincronização o "servidor" envia a lista de ficheiros na pasta
 pedida ao "cliente"

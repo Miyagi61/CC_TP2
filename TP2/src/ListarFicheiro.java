@@ -1,4 +1,6 @@
 import java.io.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -18,10 +20,25 @@ public class ListarFicheiro {
         this.list = new HashMap<>();
     }
 
-    ListarFicheiro(DataInputStream din) throws IOException{
-        //DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(), dp.getOffset(), dp.getLength()));
-        this.list = new HashMap<>();
-        this.carregarDP(din,-1);
+    static ByteManager upSerializeV2(Set<String> files) throws IOException {
+        ByteArrayOutputStream bao = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bao);
+        ByteManager bm = new ByteManager();
+
+        for(String file : files){
+            if(bao.size() + file.length() + 2 >= 791 ){// 2 + x + 2 + 1 + 8 + 2 + 1
+                bm.addElement(bao.toByteArray());
+                bao.reset();
+            }
+            out.writeUTF(file);
+            out.writeUTF(" ");
+            bm.addItem();
+        }
+        bm.addElement(bao.toByteArray());
+
+        out.flush();
+        out.close();
+        return bm;
     }
 
     void atualizaListaFicheiro(){
@@ -65,6 +82,7 @@ public class ListarFicheiro {
         out.close();
         return bm;
     }
+
 
     void serialize(DataOutputStream out, String file, Double value) throws IOException{
         out.writeUTF(file);

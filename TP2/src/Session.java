@@ -1,11 +1,9 @@
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 class SessionSocket implements Runnable {
     private HttpAnswer http;
@@ -58,32 +56,48 @@ class SessionSocket implements Runnable {
                 e.printStackTrace();
             }
         }
-        DatagramSocket dsr = new DatagramSocket(dest);
-        byte[] buffer=new byte[800];
-        DatagramPacket dp = new DatagramPacket(buffer,800);     //recebe a lista de ficheiros que tem que enviar
-
-        dsr.receive(dp);        //recebe uma string fo tipo "file0 file1 file2 ..."
-        String files_to_send = Arrays.toString(dp.getData());
-        String[] files = files_to_send.split(" ");     //cria array com a[0]=file0 , a[1]=file1, ...
+        int aux = 1;
+        Set<String> send = new HashSet<>();
+        List<Integer> seqs = new ArrayList<>();
+        Cabecalho c;
+        int maxcount = 0;
+        for(int i = 0; i < aux ; i++){
+            try {
+                ds.setSoTimeout(100); // 100 milissegundos
+                c = Pacote.recebePacoteFicheirosAEnviar(ds,send);
+                if(c == null)
+                    return;
+                aux = c.getHash(); // get numero de pacotes
+                seqs.add(c.getSeq());
+            }catch (SocketTimeoutException ste){
+                try {
+                    maxcount +=1;
+                    i-=1;
+                    if(maxcount == 20)
+                        throw new IOException("Ligação Instável");
+                    http.changeMessage("Enviando NOACKS de Ficheiros a receber para "+args[1]);
+                    Pacote.pedePacotesEmFalta(ds,seqs,dest,aux,7);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         List<Thread> threads_send = new ArrayList<>();
         List<Thread> threads_req = new ArrayList<>();
 
-        for(String s: files){
-            File f = new File(s);
-            Thread t = new Thread(new FileHandler(f, ds.getLocalSocketAddress(), true));
+        for(String s: send){
+            File f = new File(str_dir+"/"+s);
+            Thread t = new Thread(new FileHandler(f, ds.getLocalSocketAddress(), true,ds,0.0));
             threads_send.add(t); //prepara threads de envio
         }
         for(Thread t: threads_send) t.start(); //envia-os
 
 
-        byte[] buffer2 = new byte[800];
-        DatagramPacket dp_r = new DatagramPacket(buffer2, buffer2.length);          //espera ficheiros que
-        dsr.receive(dp_r);                                                          //faltam (recebe os que faltam)
-        String files_to_receive = Arrays.toString(dp.getData());
-        String[] files_r = files_to_send.split(" ");
 
-
+/*
 
         if(files_r.length > 0) {        // se houverem ficheiros a receber
             for (String s : files_r) {
@@ -102,7 +116,7 @@ class SessionSocket implements Runnable {
         for (Thread t : threads_send) t.join();
 
         http.changeMessage("A enviar Ficheiros");
-    }
+    */}
 
     private void runActive() throws IOException, InterruptedException {
         int password = Integer.parseInt(args[2]);
@@ -137,7 +151,7 @@ class SessionSocket implements Runnable {
                     if(maxcount == 20)
                         throw new IOException("Ligação Instável");
                     http.changeMessage("Enviando NOACKS da Lista de Ficheiros para "+args[1]);
-                    Pacote.pedePacotesEmFaltaLF(ds,seqs,lf_B.origem,aux);
+                    Pacote.pedePacotesEmFalta(ds,seqs,lf_B.origem,aux,4);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -145,39 +159,50 @@ class SessionSocket implements Runnable {
                 e.printStackTrace();
             }
         }
+        dest = lf_B.origem;
 
         Set<String> send = lf_A.checkDiff(lf_B);
         Set<String> req = lf_B.checkDiff(lf_A);
 
-        String files_to_request=""; //para enviar o passivo
-        String files_to_send=""; //para enviar o passivo
+        //StringBuilder files_to_request= new StringBuilder(); //para enviar o passivo
+        //StringBuilder files_to_send= new StringBuilder(); //para enviar o passivo
 
         List<Thread> threads_send = new ArrayList<>();
         List<Thread> threads_req = new ArrayList<>();
 
+        http.changeMessage("Iniciando a troca de ficheiros com "+args[1]);
+
+        ByteManager files = ListarFicheiro.upSerializeV2(req);//envia ficheiros a receber ao passivo
+        for (int i = 0; i < files.getCount(); i++)
+            Pacote.enviaPacoteFicheirosAReceber(ds, files, i,dest);
+        while (true) {
+            try {
+                http.changeMessage("Esperando NOACKS dos Ficheiros a Receber");
+                Pacote.trataACKL(ds, files);
+            } catch (SocketTimeoutException e) {
+                break;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
         for(String s: req){
-            files_to_request = files_to_request + " " + s;
-            File f = new File(s);
-            boolean create = f.createNewFile(); //caso nao exista
-            Thread t = new Thread(new FileHandler(f, ds.getLocalSocketAddress(), false));
+            File f = new File(str_dir+"/"+s);
+            Double tam_file;
+            if(lf_A.list.get(s) > lf_B.list.get(s)){
+                tam_file = lf_A.list.get(s);
+            }else{
+                tam_file = lf_B.list.get(s);
+            }
+            Thread t = new Thread(new FileHandler(f, dest, false,ds,tam_file));
             threads_req.add(t);
         }
         for(Thread t: threads_req) t.start();  // começam as threads dos ficheiros a espera de receber
-        byte[] b1 = files_to_request.getBytes(StandardCharsets.UTF_8);
-        DatagramPacket dp_to_receber = new DatagramPacket(b1,b1.length,dest);
-        ds.send(dp_to_receber); //envia ficheiros a receber ao passivo
 
-        for(String s: send)files_to_send = files_to_send + " " + s; //prepara a lista de ficheiros que vai enviar
-
-        byte[] b2 = files_to_request.getBytes(StandardCharsets.UTF_8); //envia ficheiros a receber ao passivo , que lhos
-        DatagramPacket dp_to_enviar = new DatagramPacket(b2,b2.length,dest);
-        ds.send(dp_to_enviar);
-
-        ds.receive(new DatagramPacket(new byte[100],100));  //recebe a confirmação e começa o processo de enviar
-                                                                    //o conteudo nao importa
+    /*
         for(String s: send){
             File f = new File(s);
-            Thread t = new Thread(new FileHandler(f, dest, true));
+            Thread t = new Thread(new FileHandler(f, dest, true,ds,0.0));
             threads_send.add(t);
         }
         for(Thread t: threads_send) t.start();
@@ -186,11 +211,8 @@ class SessionSocket implements Runnable {
 
         for(Thread t: threads_send) t.join();
         for(Thread t: threads_req) t.join();
-
-        System.out.println("Requested" + req.toString());
-        System.out.println("Sending" + send.toString());
-        http.changeMessage("Iniciando a troca de ficheiros com "+args[1]);
-
+    */
+        http.changeMessage("Troca de ficheiros concluída");
 
     }
     public void run() {
@@ -211,7 +233,7 @@ class SessionSocket implements Runnable {
                 }
             }
 
-            this.ds.close();
+            ds.close();
         }
 }
 

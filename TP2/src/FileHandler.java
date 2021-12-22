@@ -12,6 +12,8 @@ public class FileHandler implements Serializable,Runnable {
     private Set<Par<Cabecalho,byte[]>> pacotes; //cada pacote tem o seu cabeçalho e os bytes do corpo
                                                 //e o set está ordenado pelos números de sequência do cabeçalho
                                                 //o campo hash do cabeçalho é o tamanho do pacote neste tipo
+    private DatagramSocket datS;
+    private Double tam_file;
 
     public FileHandler(){
         Comparator<Par<Cabecalho,byte[]>> comparador = new ComparaPacotes(); //comprador segundo seq do cabeçalho
@@ -19,13 +21,15 @@ public class FileHandler implements Serializable,Runnable {
         this.syncronized=false;
     }
 
-    public  FileHandler(File file, SocketAddress dest, boolean send){
+    public  FileHandler(File file, SocketAddress dest, boolean send, DatagramSocket ds, Double tam_file){
         this.send=send;
         this.file=file;
         this.destino=dest;
         Comparator<Par<Cabecalho,byte[]>> comparador = new ComparaPacotes(); //comprador segundo seq do cabeçalho
         this.pacotes = new TreeSet<>(comparador);
         this.syncronized=false;
+        this.datS = ds;
+        this.tam_file = tam_file;
     }
 
 
@@ -91,24 +95,20 @@ public class FileHandler implements Serializable,Runnable {
         din.close();
     }
 
-    File juntaPacotes() throws FileNotFoundException,IOException{ //Pacotes já estão ordenados por ser treeset
-        File file = new File("xpto");
-        FileOutputStream fos = new FileOutputStream(file);
-        if(syncronized){
-            for(Par<Cabecalho,byte[]> me: pacotes){
-                fos.write(me.getSnd());
-            }
+    void juntaPacotes() throws FileNotFoundException,IOException{ //Pacotes já estão ordenados por ser treeset
+        if(file.exists() && !file.delete()){
+            throw new IOException("Erro a eliminar ficheiro");
         }
-        return file;
-    }
+        if(!file.createNewFile()){
+            throw new IOException("Erro a criar ficheiro");
+        }
+        OutputStream os = new FileOutputStream(file);
 
-
-    public static void main(String[] args) throws IOException {
-        File f = new File("TP2/src/test.txt");
-        boolean b = args[0].equals("true"); //true é send false é recebe
-        SocketAddress sa = new InetSocketAddress(5250);
-        Thread t = new Thread(new FileHandler(f, sa , b));
-        t.start();
+        for(Par<Cabecalho,byte[]> data : pacotes){
+            os.write(data.getSnd());
+        }
+        os.flush();
+        os.close();
     }
 
     public void run_send(){
@@ -124,12 +124,16 @@ public class FileHandler implements Serializable,Runnable {
                 int read_bytes = fis.read(pacote);
                 Cabecalho cb = new Cabecalho((byte)1,(int)i, read_bytes); //read bytes devido o ultimo ter tamanho dif
 
-                //System.out.println(read_bytes);
-
                 pacotes.add(new Par<>(cb,pacote));
                 byte[] res = ByteManager.concatByteArray(cb.outputToByte(),pacote);
                 DatagramPacket newP = new DatagramPacket(res,res.length,destino);
                 ds.send(newP); //envia para o SocketAdress destino
+
+                if(i == 0){
+                    DatagramPacket dp = new DatagramPacket(new byte[800],800);
+                    ds.receive(dp);
+                    destino = dp.getSocketAddress();
+                }
             }
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -138,36 +142,57 @@ public class FileHandler implements Serializable,Runnable {
 
     void run_receive(){
         try {
-            DatagramSocket ds =new DatagramSocket(destino);
-            int nr_pacotes_expected = (int)Math.floorDiv(file.length(),791) + 1;
+            DatagramSocket ds = new DatagramSocket();
+            int nr_pacotes_expected = (int)Math.floorDiv(tam_file.longValue(),791) + 1; // este valor tem de ser recebido nao faz sentido estar aqui
 
             for (long i = 0; i < nr_pacotes_expected ; i++) {
-
-                byte[] buffer=new byte[800];
-                DatagramPacket dp = new DatagramPacket(buffer,800);
-                ds.receive(dp);
-                ByteBuffer bb = ByteBuffer.wrap(dp.getData());
-
-                byte tipo = bb.get();   //recolher os campos do cabeçalho do datagrampacket
-                int seq = bb.getInt();
-                int resto = bb.getInt(); //resto é a quantidade de bytes que o array ainda tem (dados)
-
-                Cabecalho cb = new Cabecalho(tipo,seq,resto);
-                byte[] pacote = new byte[resto];
-                bb.get(pacote);
-                pacotes.add(new Par<>(cb,pacote));
+                Triplo<Cabecalho,byte[],SocketAddress> pac = Pacote.recebePacoteDados(datS);
+                pacotes.add(new Par<>(pac.getFst(),pac.getSnd()));
+                if(i == 0){
+                    Cabecalho c = new Cabecalho((byte)8,nr_pacotes_expected,0);
+                    byte[] buf = c.outputToByte();
+                    DatagramPacket dp2 = new DatagramPacket(buf,buf.length,pac.getTrd());
+                    ds.send(dp2);
+                    datS = ds;
+                }
             }
 
             if(pacotes.size() < nr_pacotes_expected) {  // caso para noacks
                 System.out.println("Faltam pacotes: " +pacotes.size()+"/"+nr_pacotes_expected);
+                this.pedePacotesEmFalta(ds);
+            }
+            System.out.println("Todos os pacotes foram recebidos: Syncronized");
 
-            }
-            else{
-                System.out.println("Todos os pacotes foram recebidos: Syncronized");
-                syncronized=true;
-            }
+            juntaPacotes(); // junta pacotes e cria ficheiro
+
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+    }
+
+    void pedePacotesEmFalta(DatagramSocket ds) throws IOException {
+        int maxcount = 0;
+        int last = -1;
+        List<Integer> seqs = new ArrayList<>();
+        for(Par<Cabecalho,byte[]> idx : pacotes){
+            while(idx.getFst().getSeq() != last+1){
+                seqs.add(last++);
+            }
+            last = idx.getFst().getSeq();
+        }
+        while (!seqs.isEmpty()){
+            Pacote.pedePacotesEmFaltaD(ds,seqs,destino);
+            for(Integer i : seqs){
+                Triplo<Cabecalho,byte[],SocketAddress> rec = Pacote.recebePacoteDados(ds);
+                if(seqs.contains(rec.getFst().getSeq())){
+                    pacotes.add(new Par<>(rec.getFst(),rec.getSnd()));
+                    seqs.remove(rec.getFst().getSeq());
+                }
+            }
+            maxcount +=1;
+            if(maxcount == 10)
+                throw new IOException("Ligação Instável");
         }
     }
 
