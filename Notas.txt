@@ -20,6 +20,8 @@ Pacotes de dados:
 	-Numero de sequencia começa em 1 e indica a ordem dos pacotes
 	-Na primeira comunicacao o "cliente" envia no corpo o nome da pasta
 	a sincronizar com nr de seq = -1 e hash sem signifiacdo
+	-seq=0 -> Nome do ficheiro
+	-hash é o tamanho do pacote
 
 Pedido de ficheiro:
 	-Tipo 2
