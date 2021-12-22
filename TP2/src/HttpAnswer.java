@@ -3,6 +3,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class HttpAnswer implements Runnable{
     public ServerSocket ss;
@@ -18,6 +19,7 @@ public class HttpAnswer implements Runnable{
         }
         running = true;
         feedback = "Waiting conecttion";
+        this.l = new ReentrantLock();
     }
 
     public void changeMessage(String message){

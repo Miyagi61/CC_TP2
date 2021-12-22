@@ -243,6 +243,7 @@ class Session{
         DatagramSocket ds2 = new DatagramSocket();
         HttpAnswer http = new HttpAnswer();
         new Thread(http).start();
+        Thread t = null;
         if(str.length == 3) { // <pasta> <ip> <segredo>
             try {
                 Par<Cabecalho,SocketAddress> info = Pacote.receive(ds);
@@ -255,19 +256,28 @@ class Session{
                     }else{
                         System.out.println("Conexão Estabelecida");
                         SessionSocket ss1 = new SessionSocket(ds2, str, info.getSnd(),http);
-                        new Thread(ss1).start(); // runPassive
+                        t = new Thread(ss1);
+                        t.start(); // runPassive
                     }
                 }else{
                     System.out.println("Mensagem Perdida");
                 }
             }catch (SocketTimeoutException e){
                 SessionSocket ss2 = new SessionSocket(ds2,str,null,http);
-                new Thread(ss2).start(); // runActive
+                t = new Thread(ss2);
+                t.start(); // runActive
             }
         }
         else{
             System.out.println("Argumentos inválidos");
         }
+        try{
+            if(t != null) t.join();
+        }catch(InterruptedException e){
+            e.printStackTrace();
+        }
+        
+
         http.turnOFF();
     }
 }
