@@ -268,7 +268,7 @@ class SessionSocket implements Runnable {
 
 class FFSync {
     public static void main(String[] str) throws IOException {
-        DatagramSocket ds = new DatagramSocket(Integer.parseInt(str[3])); // sera porta 80
+        DatagramSocket ds = new DatagramSocket(80); // sera porta 80
         DatagramSocket ds2 = new DatagramSocket();
         HttpAnswer http = new HttpAnswer();
         new Thread(http).start();

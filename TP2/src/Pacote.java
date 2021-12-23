@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 public class Pacote {
-    public static final int port = 7000;
+    public static final int port = 80;
     static void enviaPacoteErro(DatagramSocket ds, int seq, SocketAddress sa) throws IOException {
         Cabecalho c = new Cabecalho((byte)5,seq,0);
         byte[] res = c.outputToByte();
