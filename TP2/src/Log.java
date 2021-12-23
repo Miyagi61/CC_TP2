@@ -12,28 +12,20 @@ import java.util.stream.Stream;
 
 
   public class Log {
-
       private final static  Logger logr = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
-      public  static void main(String[] args){
+      public  static Logger start(){
             LogManager.getLogManager().reset();
             logr.setLevel(Level.ALL);
-            ConsoleHandler ch= new ConsoleHandler();
-            ch.setLevel(Level.FINE);
-            logr.addHandler(ch);
 
             try{
                 FileHandler fh= new FileHandler("myLogger.log");
-                fh.setLevel(Level.FINE);
+                fh.setLevel(Level.ALL);
                 logr.addHandler(fh);
 
             }catch (IOException e){
                 logr.log(Level.SEVERE,"File logger not working", e);
 
             }
-
-            logr.info("My first log");
-
-
           /*
             SEVERE
             WARNING
@@ -43,5 +35,6 @@ import java.util.stream.Stream;
             FINER
             FINEST
              */
+        return logr;
       }}
 

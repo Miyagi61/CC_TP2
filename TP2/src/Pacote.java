@@ -134,7 +134,7 @@ public class Pacote {
     static Triplo<Cabecalho,SocketAddress,DataInputStream> receiveDIN(DatagramSocket ds) throws IOException{
         byte[] buf = new byte[800];
         DatagramPacket dp = new DatagramPacket(buf, 800);
-        ds.setSoTimeout(500); // timeout é importante
+        ds.setSoTimeout(1000); // timeout é importante
         ds.receive(dp);
         DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
         return new Triplo<>(new Cabecalho(din),dp.getSocketAddress(),din);

@@ -2,7 +2,9 @@ import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.util.*;
-
+import java.time.Instant;
+import java.time.Duration;
+import java.util.logging.*;
 
 public class FileHandler implements Serializable,Runnable {
     boolean send;  //se for true a thread vai enviar informação, senao vai receber
@@ -15,6 +17,7 @@ public class FileHandler implements Serializable,Runnable {
     private int port;
     private Double tam_file;
 
+     private final static  Logger logr = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
     public FileHandler(){
         Comparator<Par<Cabecalho,byte[]>> comparador = new ComparaPacotes(); //comprador segundo seq do cabeçalho
         this.pacotes = new TreeSet<>(comparador);
@@ -129,6 +132,7 @@ public class FileHandler implements Serializable,Runnable {
                 DatagramPacket newP = new DatagramPacket(res,res.length,destino);
                 ds.send(newP); //envia para o SocketAdress destino
             }
+            ds.close();
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -137,6 +141,7 @@ public class FileHandler implements Serializable,Runnable {
     void run_receive(){
         try {
             DatagramSocket datS = new DatagramSocket(port);
+            long start = System.currentTimeMillis();
             int nr_pacotes_expected = (int)Math.floorDiv(tam_file.longValue(),791) + 1; // este valor tem de ser recebido nao faz sentido estar aqui
             for (long i = 0; i < nr_pacotes_expected ; i++) {
                 Triplo<Cabecalho,byte[],SocketAddress> pac = Pacote.recebePacoteDados(datS);
@@ -150,9 +155,13 @@ public class FileHandler implements Serializable,Runnable {
                 System.out.println("Faltam pacotes: " +pacotes.size()+"/"+nr_pacotes_expected);
                 this.pedePacotesEmFalta(datS);
             }
-            System.out.println("Todos os pacotes foram recebidos: Syncronized");
+            System.out.println("Todos os pacotes foram recebidos: Synchronized");
 
             juntaPacotes(); // junta pacotes e cria ficheiro
+            long end = System.currentTimeMillis();
+            long res = end - start;
+            double Debito = tam_file/((double)res/1000);
+            logr.log(Level.INFO,"The debt is "+Debito);
 
         } catch (IOException e) {
             e.printStackTrace();

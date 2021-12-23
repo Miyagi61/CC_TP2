@@ -67,7 +67,7 @@ class SessionSocket implements Runnable {
         int maxcount = 0;
         for(int i = 0; i < aux ; i++){
             try {
-                ds.setSoTimeout(100); // 100 milissegundos
+                ds.setSoTimeout(1000); // 100 milissegundos
                 c = Pacote.recebePacoteFicheirosAEnviar(ds,send);
                 if(c == null)
                     return;
@@ -161,7 +161,7 @@ class SessionSocket implements Runnable {
         logr.log(Level.INFO,"Receiving File List");
         for(int i = 0; i < aux ; i++){
             try {
-                ds.setSoTimeout(100); // 100 milissegundos
+                ds.setSoTimeout(1000); // 500 milissegundos
                 c = Pacote.recebePacoteListaFicheiros(ds,lf_B,i-1);
                 if(c == null)
                     return;
@@ -289,15 +289,15 @@ class SessionSocket implements Runnable {
 }
 
 class FFSync {
-    private final static  Logger logr = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
     public static void main(String[] str) throws IOException {
+        Logger logr = Log.start();
         DatagramSocket ds = new DatagramSocket(80); // sera porta 80
         DatagramSocket ds2 = new DatagramSocket();
         HttpAnswer http = new HttpAnswer(str[1]);
         new Thread(http).start();
         Thread t = null;
-        if(str.length == 4) { // <pasta> <ip> <segredo>
+        if(str.length == 3) { // <pasta> <ip> <segredo>
             try {
                 Par<Cabecalho,SocketAddress> info = Pacote.receive(ds);
                 Cabecalho c = info.getFst();
