@@ -55,7 +55,7 @@ public class udp_server {
                     if(maxcount == 20)
                             throw new IOException("Ligação Instável");
                     InetSocketAddress isa = new InetSocketAddress(ip,5252);
-                    Pacote.pedePacotesEmFaltaLF(ds,seqs,isa,aux);
+                   // Pacote.pedePacotesEmFalta(ds,seqs,isa,aux);
 
                 } catch (IOException e) {
                     e.printStackTrace();

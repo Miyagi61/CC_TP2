@@ -123,7 +123,7 @@ public class ListarFicheiro {
     public Set<String> checkDiff(ListarFicheiro lf){
         Set<String> res = new TreeSet<>();
         for(Map.Entry<String,Double> file : this.list.entrySet()){
-            if(!lf.list.entrySet().contains(file)){
+            if(!lf.list.containsKey(file.getKey()) || lf.list.get(file.getKey()) < file.getValue()){
                 res.add(file.getKey());
             }
         }

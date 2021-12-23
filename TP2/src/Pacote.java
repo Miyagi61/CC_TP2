@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 public class Pacote {
-
+    public static final int port = 7000;
     static void enviaPacoteErro(DatagramSocket ds, int seq, SocketAddress sa) throws IOException {
         Cabecalho c = new Cabecalho((byte)5,seq,0);
         byte[] res = c.outputToByte();
@@ -17,7 +17,7 @@ public class Pacote {
         ByteArrayOutputStream bao = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bao);
         c.serialize(out);
-        DatagramPacket pastaP = new DatagramPacket(bao.toByteArray(), bao.size(),ip,5252);
+        DatagramPacket pastaP = new DatagramPacket(bao.toByteArray(), bao.size(),ip,port);
         ds.send(pastaP);
     }
 
@@ -49,6 +49,8 @@ public class Pacote {
         int resto = bb.getInt(); //resto é a quantidade de bytes que o array ainda tem (dados)
 
         Cabecalho cb = new Cabecalho(tipo,seq,resto);
+        if(resto <= 0)
+            return null;
         byte[] pacote = new byte[resto];
         bb.get(pacote);
         return new Triplo<>(cb,pacote,dp.getSocketAddress());
@@ -123,7 +125,7 @@ public class Pacote {
     static Par<Cabecalho,SocketAddress> receive(DatagramSocket ds) throws IOException{
         byte[] buf = new byte[800];
         DatagramPacket dp = new DatagramPacket(buf, 800);
-        ds.setSoTimeout(5000); // timeout é importante
+        ds.setSoTimeout(2000); // timeout é importante
         ds.receive(dp);
         DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
         return new Par<>(new Cabecalho(din),dp.getSocketAddress());

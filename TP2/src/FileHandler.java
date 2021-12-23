@@ -12,7 +12,7 @@ public class FileHandler implements Serializable,Runnable {
     private Set<Par<Cabecalho,byte[]>> pacotes; //cada pacote tem o seu cabeçalho e os bytes do corpo
                                                 //e o set está ordenado pelos números de sequência do cabeçalho
                                                 //o campo hash do cabeçalho é o tamanho do pacote neste tipo
-    private DatagramSocket datS;
+    private int port;
     private Double tam_file;
 
     public FileHandler(){
@@ -21,14 +21,14 @@ public class FileHandler implements Serializable,Runnable {
         this.syncronized=false;
     }
 
-    public  FileHandler(File file, SocketAddress dest, boolean send, DatagramSocket ds, Double tam_file){
+    public  FileHandler(File file, SocketAddress dest, boolean send, int port, Double tam_file){
         this.send=send;
         this.file=file;
         this.destino=dest;
         Comparator<Par<Cabecalho,byte[]>> comparador = new ComparaPacotes(); //comprador segundo seq do cabeçalho
         this.pacotes = new TreeSet<>(comparador);
         this.syncronized=false;
-        this.datS = ds;
+        this.port = port;
         this.tam_file = tam_file;
     }
 
@@ -128,12 +128,6 @@ public class FileHandler implements Serializable,Runnable {
                 byte[] res = ByteManager.concatByteArray(cb.outputToByte(),pacote);
                 DatagramPacket newP = new DatagramPacket(res,res.length,destino);
                 ds.send(newP); //envia para o SocketAdress destino
-
-                if(i == 0){
-                    DatagramPacket dp = new DatagramPacket(new byte[800],800);
-                    ds.receive(dp);
-                    destino = dp.getSocketAddress();
-                }
             }
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -142,24 +136,19 @@ public class FileHandler implements Serializable,Runnable {
 
     void run_receive(){
         try {
-            DatagramSocket ds = new DatagramSocket();
+            DatagramSocket datS = new DatagramSocket(port);
             int nr_pacotes_expected = (int)Math.floorDiv(tam_file.longValue(),791) + 1; // este valor tem de ser recebido nao faz sentido estar aqui
-
             for (long i = 0; i < nr_pacotes_expected ; i++) {
                 Triplo<Cabecalho,byte[],SocketAddress> pac = Pacote.recebePacoteDados(datS);
-                pacotes.add(new Par<>(pac.getFst(),pac.getSnd()));
-                if(i == 0){
-                    Cabecalho c = new Cabecalho((byte)8,nr_pacotes_expected,0);
-                    byte[] buf = c.outputToByte();
-                    DatagramPacket dp2 = new DatagramPacket(buf,buf.length,pac.getTrd());
-                    ds.send(dp2);
-                    datS = ds;
+                if(pac != null)
+                    pacotes.add(new Par<>(pac.getFst(),pac.getSnd()));
+                else{
+                    nr_pacotes_expected--;
                 }
             }
-
             if(pacotes.size() < nr_pacotes_expected) {  // caso para noacks
                 System.out.println("Faltam pacotes: " +pacotes.size()+"/"+nr_pacotes_expected);
-                this.pedePacotesEmFalta(ds);
+                this.pedePacotesEmFalta(datS);
             }
             System.out.println("Todos os pacotes foram recebidos: Syncronized");
 

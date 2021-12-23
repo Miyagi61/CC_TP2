@@ -13,7 +13,7 @@ public class HttpAnswer implements Runnable{
 
     HttpAnswer(){
         try {
-            ss = new ServerSocket(80);
+            ss = new ServerSocket(8045);
         }catch (IOException e){
             e.printStackTrace();
         }

@@ -1,8 +1,6 @@
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 class SessionSocket implements Runnable {
@@ -46,7 +44,7 @@ class SessionSocket implements Runnable {
         http.changeMessage("Enviando Lista de Ficheiros de "+str_dir+" a "+dest);
         for (int i = 1; i <= list_files.getCount(); i++)
             Pacote.enviaPacoteListaFicheiros(ds, list_files, i,dest);
-        while (true) {
+        /*while (true) {
             try {
                 http.changeMessage("Esperando NOACKS da Lista de Ficheiros");
                 Pacote.trataACKL(ds, list_files);
@@ -55,9 +53,10 @@ class SessionSocket implements Runnable {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
         int aux = 1;
-        Set<String> send = new HashSet<>();
+        int port = ds.getLocalPort();
+        Set<String> send = new TreeSet<>();
         List<Integer> seqs = new ArrayList<>();
         Cabecalho c;
         int maxcount = 0;
@@ -88,12 +87,25 @@ class SessionSocket implements Runnable {
         List<Thread> threads_send = new ArrayList<>();
         List<Thread> threads_req = new ArrayList<>();
 
+
+        ds.close();
         for(String s: send){
+            if(ds.isClosed())
+                ds = new DatagramSocket(port);
             File f = new File(str_dir+"/"+s);
-            Thread t = new Thread(new FileHandler(f, ds.getLocalSocketAddress(), true,ds,0.0));
+            DatagramPacket dp = new DatagramPacket(new byte[800],800);
+            ds.receive(dp);
+            dest = dp.getSocketAddress();
+            ds = new DatagramSocket();
+            ds.send(dp);
+
+            Thread t = new Thread(new FileHandler(f, dest, true,ds.getLocalPort(),0.0));
             threads_send.add(t); //prepara threads de envio
         }
-        for(Thread t: threads_send) t.start(); //envia-os
+        for(Thread t: threads_send){
+            t.start(); //envia-os
+            t.join();
+        }
 
 
 
@@ -130,7 +142,6 @@ class SessionSocket implements Runnable {
 
         ListarFicheiro lf_A = new ListarFicheiro(str_dir);
         lf_A.atualizaListaFicheiro();
-
         ListarFicheiro lf_B = new ListarFicheiro();
         int aux = 1;
         int maxcount = 0;
@@ -171,11 +182,12 @@ class SessionSocket implements Runnable {
         List<Thread> threads_req = new ArrayList<>();
 
         http.changeMessage("Iniciando a troca de ficheiros com "+args[1]);
-
         ByteManager files = ListarFicheiro.upSerializeV2(req);//envia ficheiros a receber ao passivo
         for (int i = 0; i < files.getCount(); i++)
             Pacote.enviaPacoteFicheirosAReceber(ds, files, i,dest);
-        while (true) {
+
+
+        /*while (true) {
             try {
                 http.changeMessage("Esperando NOACKS dos Ficheiros a Receber");
                 Pacote.trataACKL(ds, files);
@@ -184,21 +196,38 @@ class SessionSocket implements Runnable {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
 
+        ds.close();
+        int idx = 0;
         for(String s: req){
+            ds = new DatagramSocket();
             File f = new File(str_dir+"/"+s);
             Double tam_file;
-            if(lf_A.list.get(s) > lf_B.list.get(s)){
+            if(lf_A.list.containsKey(s) && lf_B.list.containsKey(s) && lf_A.list.get(s) > lf_B.list.get(s)){
+                tam_file = lf_A.list.get(s);
+            }else if(!lf_A.list.containsKey(s)){
+                tam_file = lf_B.list.get(s);
+            }else if(!lf_B.list.containsKey(s)){
                 tam_file = lf_A.list.get(s);
             }else{
                 tam_file = lf_B.list.get(s);
             }
-            Thread t = new Thread(new FileHandler(f, dest, false,ds,tam_file));
+
+            c = new Cabecalho((byte)8,idx,0);
+            byte[] buf = c.outputToByte();
+            DatagramPacket dp2 = new DatagramPacket(buf,buf.length,dest);
+            ds.send(dp2);
+            ds.receive(dp2);
+
+            Thread t = new Thread(new FileHandler(f, dp2.getSocketAddress(), false,ds.getLocalPort(),tam_file));
+            ds.close();
             threads_req.add(t);
         }
-        for(Thread t: threads_req) t.start();  // começam as threads dos ficheiros a espera de receber
-
+        for(Thread ts: threads_req){
+            ts.start();  // começam as threads dos ficheiros a espera de receber
+            ts.join();
+        }
     /*
         for(String s: send){
             File f = new File(s);
@@ -237,14 +266,14 @@ class SessionSocket implements Runnable {
         }
 }
 
-class Session{
+class FFSync {
     public static void main(String[] str) throws IOException {
-        DatagramSocket ds = new DatagramSocket(5252); // sera porta 80
+        DatagramSocket ds = new DatagramSocket(Integer.parseInt(str[3])); // sera porta 80
         DatagramSocket ds2 = new DatagramSocket();
         HttpAnswer http = new HttpAnswer();
         new Thread(http).start();
         Thread t = null;
-        if(str.length == 3) { // <pasta> <ip> <segredo>
+        if(str.length == 4) { // <pasta> <ip> <segredo>
             try {
                 Par<Cabecalho,SocketAddress> info = Pacote.receive(ds);
                 Cabecalho c = info.getFst();
