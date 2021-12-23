@@ -62,7 +62,7 @@ class SessionSocket implements Runnable {
         int maxcount = 0;
         for(int i = 0; i < aux ; i++){
             try {
-                ds.setSoTimeout(100); // 100 milissegundos
+                ds.setSoTimeout(500); // 100 milissegundos
                 c = Pacote.recebePacoteFicheirosAEnviar(ds,send);
                 if(c == null)
                     return;
@@ -87,6 +87,7 @@ class SessionSocket implements Runnable {
         List<Thread> threads_send = new ArrayList<>();
         List<Thread> threads_req = new ArrayList<>();
 
+        http.changeMessage("Enviando Pacotes de Ficheiros para "+args[1]);
 
         ds.close();
         for(String s: send){
@@ -104,7 +105,6 @@ class SessionSocket implements Runnable {
         }
         for(Thread t: threads_send){
             t.start(); //envia-os
-            t.join();
         }
 
 
@@ -149,7 +149,7 @@ class SessionSocket implements Runnable {
         http.changeMessage("Recebendo Lista de Ficheiros de "+args[1]);
         for(int i = 0; i < aux ; i++){
             try {
-                ds.setSoTimeout(100); // 100 milissegundos
+                ds.setSoTimeout(500); // 100 milissegundos
                 c = Pacote.recebePacoteListaFicheiros(ds,lf_B,i-1);
                 if(c == null)
                     return;
@@ -198,6 +198,8 @@ class SessionSocket implements Runnable {
             }
         }*/
 
+        http.changeMessage("Recebendo Pacotes de Ficheiros de "+args[1]);
+
         ds.close();
         int idx = 0;
         for(String s: req){
@@ -214,19 +216,18 @@ class SessionSocket implements Runnable {
                 tam_file = lf_B.list.get(s);
             }
 
+
             c = new Cabecalho((byte)8,idx,0);
             byte[] buf = c.outputToByte();
             DatagramPacket dp2 = new DatagramPacket(buf,buf.length,dest);
             ds.send(dp2);
             ds.receive(dp2);
-
             Thread t = new Thread(new FileHandler(f, dp2.getSocketAddress(), false,ds.getLocalPort(),tam_file));
             ds.close();
             threads_req.add(t);
         }
         for(Thread ts: threads_req){
             ts.start();  // começam as threads dos ficheiros a espera de receber
-            ts.join();
         }
     /*
         for(String s: send){
@@ -261,8 +262,6 @@ class SessionSocket implements Runnable {
                     e.printStackTrace();
                 }
             }
-
-            ds.close();
         }
 }
 
@@ -270,10 +269,10 @@ class FFSync {
     public static void main(String[] str) throws IOException {
         DatagramSocket ds = new DatagramSocket(80); // sera porta 80
         DatagramSocket ds2 = new DatagramSocket();
-        HttpAnswer http = new HttpAnswer();
+        HttpAnswer http = new HttpAnswer(str[1]);
         new Thread(http).start();
         Thread t = null;
-        if(str.length == 4) { // <pasta> <ip> <segredo>
+        if(str.length == 3) { // <pasta> <ip> <segredo>
             try {
                 Par<Cabecalho,SocketAddress> info = Pacote.receive(ds);
                 Cabecalho c = info.getFst();

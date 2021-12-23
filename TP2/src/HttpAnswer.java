@@ -4,23 +4,31 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.net.InetAddress;
 
 public class HttpAnswer implements Runnable{
     public ServerSocket ss;
     public String feedback;
     public boolean running;
     public Lock l;
+    public InetAddress ip;
 
-    HttpAnswer(){
+    HttpAnswer(String ip){
         try {
-            ss = new ServerSocket(8045);
+            ss = new ServerSocket(80);
         }catch (IOException e){
             e.printStackTrace();
         }
         running = true;
         feedback = "Waiting conecttion";
         this.l = new ReentrantLock();
+        try{
+             this.ip = InetAddress.getByName(ip);
+        }catch(IOException e){
+            e.printStackTrace();
+        }  
     }
+       
 
     public void changeMessage(String message){
         l.lock();
@@ -43,7 +51,7 @@ public class HttpAnswer implements Runnable{
 
     public void turnOFF() throws IOException {
         running = false;
-        Socket s = new Socket(ss.getInetAddress(),80);
+        Socket s = new Socket(ip,80);
         s.close();
     }
 

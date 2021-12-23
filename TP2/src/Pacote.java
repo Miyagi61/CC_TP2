@@ -40,11 +40,11 @@ public class Pacote {
     static Triplo<Cabecalho,byte[],SocketAddress> recebePacoteDados(DatagramSocket ds) throws IOException {
         byte[] buffer=new byte[800];
         DatagramPacket dp = new DatagramPacket(buffer,800);
-        ds.setSoTimeout(100);
+        ds.setSoTimeout(1000);
         ds.receive(dp);
         ByteBuffer bb = ByteBuffer.wrap(dp.getData());
 
-        byte tipo = bb.get();   //recolher os campos do cabeçalho do datagrampacket
+        byte tipo = bb.get();    //recolher os campos do cabeçalho do datagrampacket
         int seq = bb.getInt();
         int resto = bb.getInt(); //resto é a quantidade de bytes que o array ainda tem (dados)
 
@@ -134,7 +134,7 @@ public class Pacote {
     static Triplo<Cabecalho,SocketAddress,DataInputStream> receiveDIN(DatagramSocket ds) throws IOException{
         byte[] buf = new byte[800];
         DatagramPacket dp = new DatagramPacket(buf, 800);
-        ds.setSoTimeout(100); // timeout é importante
+        ds.setSoTimeout(500); // timeout é importante
         ds.receive(dp);
         DataInputStream din = new DataInputStream(new ByteArrayInputStream(dp.getData(),dp.getOffset(),dp.getLength()));
         return new Triplo<>(new Cabecalho(din),dp.getSocketAddress(),din);
