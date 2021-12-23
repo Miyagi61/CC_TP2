@@ -2,6 +2,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.util.*;
+import java.util.logging.*;
+
 
 class SessionSocket implements Runnable {
     private HttpAnswer http;
@@ -11,6 +13,7 @@ class SessionSocket implements Runnable {
     private SocketAddress dest;
 
     private final String TEST_DIR = System.getProperty("user.dir");
+    private final static  Logger logr = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
     SessionSocket(DatagramSocket s,String[] args,SocketAddress d, HttpAnswer http) {
         this.ds = s;
@@ -33,6 +36,7 @@ class SessionSocket implements Runnable {
 
         if(!dir.exists() && !dir.mkdirs()){
             System.out.println("Something went wrong");
+            logr.log(Level.SEVERE,"Unable to initiate application");
         }
     }
 
@@ -42,6 +46,7 @@ class SessionSocket implements Runnable {
         ByteManager list_files = lf.upSerialize();
 
         http.changeMessage("Enviando Lista de Ficheiros de "+str_dir+" a "+dest);
+        logr.log(Level.FINE,"Sending File List");
         for (int i = 1; i <= list_files.getCount(); i++)
             Pacote.enviaPacoteListaFicheiros(ds, list_files, i,dest);
         /*while (true) {
@@ -62,24 +67,29 @@ class SessionSocket implements Runnable {
         int maxcount = 0;
         for(int i = 0; i < aux ; i++){
             try {
-                ds.setSoTimeout(500); // 100 milissegundos
+                ds.setSoTimeout(100); // 100 milissegundos
                 c = Pacote.recebePacoteFicheirosAEnviar(ds,send);
                 if(c == null)
                     return;
                 aux = c.getHash(); // get numero de pacotes
                 seqs.add(c.getSeq());
-            }catch (SocketTimeoutException ste){
+            }catch (SocketTimeoutException ste ){
+                logr.log(Level.SEVERE,"Socket timed out", ste);
                 try {
                     maxcount +=1;
                     i-=1;
                     if(maxcount == 20)
                         throw new IOException("Ligação Instável");
+                    logr.log(Level.WARNING,"Unstable Connection");
                     http.changeMessage("Enviando NOACKS de Ficheiros a receber para "+args[1]);
+                    logr.log(Level.INFO,"Sending NOACKS for Files to receive");
                     Pacote.pedePacotesEmFalta(ds,seqs,dest,aux,7);
                 } catch (IOException e) {
+                    logr.log(Level.SEVERE,"Error",e);
                     e.printStackTrace();
                 }
             }catch (IOException e) {
+                logr.log(Level.SEVERE,"Error",e);
                 e.printStackTrace();
             }
         }
@@ -87,7 +97,6 @@ class SessionSocket implements Runnable {
         List<Thread> threads_send = new ArrayList<>();
         List<Thread> threads_req = new ArrayList<>();
 
-        http.changeMessage("Enviando Pacotes de Ficheiros para "+args[1]);
 
         ds.close();
         for(String s: send){
@@ -105,6 +114,7 @@ class SessionSocket implements Runnable {
         }
         for(Thread t: threads_send){
             t.start(); //envia-os
+            t.join();
         }
 
 
@@ -137,6 +147,7 @@ class SessionSocket implements Runnable {
         try {
             Pacote.pedeListaFicheiros(ds, c, InetAddress.getByName(args[1]));
         } catch (IOException e) {
+            logr.log(Level.SEVERE,"Error",e);
             e.printStackTrace();
         }
 
@@ -147,26 +158,32 @@ class SessionSocket implements Runnable {
         int maxcount = 0;
         List<Integer> seqs = new ArrayList<>();
         http.changeMessage("Recebendo Lista de Ficheiros de "+args[1]);
+        logr.log(Level.INFO,"Receiving File List");
         for(int i = 0; i < aux ; i++){
             try {
-                ds.setSoTimeout(500); // 100 milissegundos
+                ds.setSoTimeout(100); // 100 milissegundos
                 c = Pacote.recebePacoteListaFicheiros(ds,lf_B,i-1);
                 if(c == null)
                     return;
                 aux = c.getHash(); // get numero de pacotes
                 seqs.add(c.getSeq());
             }catch (SocketTimeoutException ste){
+                logr.log(Level.SEVERE,"Socket timed out",ste);
                 try {
                     maxcount +=1;
                     i-=1;
                     if(maxcount == 20)
                         throw new IOException("Ligação Instável");
+                    logr.log(Level.WARNING,"Unstable Connection");
                     http.changeMessage("Enviando NOACKS da Lista de Ficheiros para "+args[1]);
+                    logr.log(Level.INFO,"Sending NOACKS about File List to"+args[1]);
                     Pacote.pedePacotesEmFalta(ds,seqs,lf_B.origem,aux,4);
                 } catch (IOException e) {
+                    logr.log(Level.SEVERE,"Error",e);
                     e.printStackTrace();
                 }
             }catch (IOException e) {
+                logr.log(Level.SEVERE,"Error",e);
                 e.printStackTrace();
             }
         }
@@ -182,6 +199,7 @@ class SessionSocket implements Runnable {
         List<Thread> threads_req = new ArrayList<>();
 
         http.changeMessage("Iniciando a troca de ficheiros com "+args[1]);
+        logr.log(Level.INFO,"Initiating File Sharing With"+args[1]);
         ByteManager files = ListarFicheiro.upSerializeV2(req);//envia ficheiros a receber ao passivo
         for (int i = 0; i < files.getCount(); i++)
             Pacote.enviaPacoteFicheirosAReceber(ds, files, i,dest);
@@ -197,8 +215,6 @@ class SessionSocket implements Runnable {
                 e.printStackTrace();
             }
         }*/
-
-        http.changeMessage("Recebendo Pacotes de Ficheiros de "+args[1]);
 
         ds.close();
         int idx = 0;
@@ -216,18 +232,19 @@ class SessionSocket implements Runnable {
                 tam_file = lf_B.list.get(s);
             }
 
-
             c = new Cabecalho((byte)8,idx,0);
             byte[] buf = c.outputToByte();
             DatagramPacket dp2 = new DatagramPacket(buf,buf.length,dest);
             ds.send(dp2);
             ds.receive(dp2);
+
             Thread t = new Thread(new FileHandler(f, dp2.getSocketAddress(), false,ds.getLocalPort(),tam_file));
             ds.close();
             threads_req.add(t);
         }
         for(Thread ts: threads_req){
             ts.start();  // começam as threads dos ficheiros a espera de receber
+            ts.join();
         }
     /*
         for(String s: send){
@@ -246,33 +263,41 @@ class SessionSocket implements Runnable {
 
     }
     public void run() {
-            if(dest != null){
-                try{
-                    http.changeMessage("Modo Passivo");
-                    this.runPassive();
-                }catch (IOException | InterruptedException e){
-                    e.printStackTrace();
-                }
-            }
-            else{
-                http.changeMessage("Modo Ativo");
-                try {
-                    this.runActive();
-                } catch (IOException | InterruptedException e) {
-                    e.printStackTrace();
-                }
+        if(dest != null){
+            try{
+                http.changeMessage("Modo Passivo");
+                logr.log(Level.INFO,"Passive Mode");
+                this.runPassive();
+            }catch (IOException | InterruptedException e){
+                e.printStackTrace();
+                logr.log(Level.SEVERE,"Error",e);
             }
         }
+        else{
+            http.changeMessage("Modo Ativo");
+            logr.log(Level.INFO,"Active Mode");
+            try {
+                this.runActive();
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+                logr.log(Level.SEVERE,"Error",e);
+            }
+        }
+
+        ds.close();
+    }
 }
 
 class FFSync {
+    private final static  Logger logr = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+
     public static void main(String[] str) throws IOException {
         DatagramSocket ds = new DatagramSocket(80); // sera porta 80
         DatagramSocket ds2 = new DatagramSocket();
         HttpAnswer http = new HttpAnswer(str[1]);
         new Thread(http).start();
         Thread t = null;
-        if(str.length == 3) { // <pasta> <ip> <segredo>
+        if(str.length == 4) { // <pasta> <ip> <segredo>
             try {
                 Par<Cabecalho,SocketAddress> info = Pacote.receive(ds);
                 Cabecalho c = info.getFst();
@@ -283,6 +308,7 @@ class FFSync {
                         Pacote.enviaPacoteErro(ds,0,info.getSnd());
                     }else{
                         System.out.println("Conexão Estabelecida");
+                        logr.log(Level.INFO,"Connection Established");
                         SessionSocket ss1 = new SessionSocket(ds2, str, info.getSnd(),http);
                         t = new Thread(ss1);
                         t.start(); // runPassive
@@ -291,6 +317,7 @@ class FFSync {
                     System.out.println("Mensagem Perdida");
                 }
             }catch (SocketTimeoutException e){
+                logr.log(Level.SEVERE,"Error",e);
                 SessionSocket ss2 = new SessionSocket(ds2,str,null,http);
                 t = new Thread(ss2);
                 t.start(); // runActive
@@ -298,13 +325,15 @@ class FFSync {
         }
         else{
             System.out.println("Argumentos inválidos");
+            logr.log(Level.WARNING,"Invalid Arguments");
         }
         try{
             if(t != null) t.join();
         }catch(InterruptedException e){
+            logr.log(Level.SEVERE,"Error",e);
             e.printStackTrace();
         }
-        
+
 
         http.turnOFF();
     }
