@@ -161,7 +161,8 @@ public class FileHandler implements Serializable,Runnable {
             long end = System.currentTimeMillis();
             long res = end - start;
             double Debito = tam_file/((double)res/1000);
-            logr.log(Level.INFO,"The debt is "+Debito);
+            logr.log(Level.INFO,"The debt is "+Debito+" bits per second");
+            logr.log(Level.INFO,"Transfer Time is"+(double)res/1000 + "seconds");
 
         } catch (IOException e) {
             e.printStackTrace();

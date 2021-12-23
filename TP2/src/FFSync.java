@@ -97,9 +97,10 @@ class SessionSocket implements Runnable {
         List<Thread> threads_send = new ArrayList<>();
         List<Thread> threads_req = new ArrayList<>();
 
-
+        logr.log(Level.INFO,"Śending Files");
         ds.close();
         for(String s: send){
+            logr.log(Level.INFO,s);
             if(ds.isClosed())
                 ds = new DatagramSocket(port);
             File f = new File(str_dir+"/"+s);
@@ -215,10 +216,16 @@ class SessionSocket implements Runnable {
                 e.printStackTrace();
             }
         }*/
+        logr.log(Level.INFO,"Śending Files");
+        for(String s : send){
+            logr.log(Level.INFO,s);
+        }
 
         ds.close();
+        logr.log(Level.INFO,"Requesting Files");
         int idx = 0;
         for(String s: req){
+            logr.log(Level.INFO,s);
             ds = new DatagramSocket();
             File f = new File(str_dir+"/"+s);
             Double tam_file;
@@ -242,7 +249,7 @@ class SessionSocket implements Runnable {
             ds.close();
             threads_req.add(t);
         }
-        for(Thread ts: threads_req){
+              for(Thread ts: threads_req){
             ts.start();  // começam as threads dos ficheiros a espera de receber
             ts.join();
         }
